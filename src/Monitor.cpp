@@ -12,11 +12,25 @@ Monitor::Monitor(std::shared_ptr<PetriNetwork> petri_network) {
 }
 
 bool Monitor::fire_immediate(Agent* agent, uint32_t transition) {
+    #ifdef PROFILING_ENABLE
+    ZoneScopedN("ImmediateEntry");
+    TracyMessageL("Agent try to acquire semaphore");
+    hodor->acquire();
+    std::unique_lock<LockableBase(std::mutex)> guard(mutex);
+    #else
     hodor->acquire();
     std::unique_lock<std::mutex> guard(mutex);
+    #endif
+    #ifdef PROFILING_ENABLE
+    TracyMessageL("Agent acquire semaphore and mutex succesfully");
+    #endif
     try
     {
+        
         if (petri_instance->isSensitized(transition)) {
+            #ifdef PROFILING_ENABLE
+            TracyMessageL("Agent is enable to fire transition");
+            #endif
             //logger->record("Agent #" + agent->getStrId() + " will fire transition number " + std::to_string(transition) + "\n");
             //logger->addFire(transition);
             auto new_mark = std::make_unique<std::vector<uint32_t>>(petri_instance->getMark()->size());
@@ -28,16 +42,25 @@ bool Monitor::fire_immediate(Agent* agent, uint32_t transition) {
             wake_up();
             guard.unlock();
             hodor->release();
+            #ifdef PROFILING_ENABLE
+            TracyMessageL("Agent leaves monitor after fire transition");
+            #endif
             return true;
 
         }
         else {
+            #ifdef PROFILING_ENABLE
+            TracyMessageL("Agent is not enable to fire transition");
+            #endif
             //logger->record("Agent #" + agent->getStrId() + " go to queue to wait for transition " + std::to_string(transition) + "\n");
             //logger->record("Immediate queue size " + std::to_string(immediate_queue->getSize()) + "\n");
             checkAndUnlock();
             guard.unlock();
             immediate_queue->addAgent(transition, agent);
             hodor->release();
+            #ifdef PROFILING_ENABLE
+            TracyMessageL("Agent leaves monitor after put itself in queue");
+            #endif
             return false;
         }
     }
@@ -47,19 +70,40 @@ bool Monitor::fire_immediate(Agent* agent, uint32_t transition) {
     }
 }
 
+#ifdef PROFILING_ENABLE
+ZoneScopedN("TemporalEntry");
+#endif
 bool Monitor::fire_temporal(Agent* agent, uint32_t transition) {
+    #ifdef PROFILING_ENABLE
+    TracyMessageL("Agent try to acquire semaphore");
+    hodor->acquire();
+    std::unique_lock<LockableBase(std::mutex)> guard(mutex);
+    #else
     hodor->acquire();
     std::unique_lock<std::mutex> guard(mutex);
+    #endif
+    #ifdef PROFILING_ENABLE
+    TracyMessageL("Agent acquire semaphore and mutex succesfully");
+    #endif
     try {
         if (petri_instance->isSensitized(transition)) {
+            #ifdef PROFILING_ENABLE
+            TracyMessageL("Agent is sensitized to fire transition");
+            #endif
             //logger->record("Temporal agent #" + agent->getStrId() + " can fire transition " + std::to_string(transition) + "\n");
             //Is there another thread trying to fire the same transition ?
             if (!isAnotherFirst(transition, agent)) {
+                #ifdef PROFILING_ENABLE
+                TracyMessageL("Agent is first to fire transition");
+                #endif
                 //logger->record("Temporal agent #" + agent->getStrId() + " is the first to fire transition number " + std::to_string(transition) + "\n");
                 //If not, Am I inside temporal window ?
                 auto inside = petri_instance->isTemporalSensitized(transition);
                 //logger->record("Temporal agent #" + agent->getStrId() + " have a difference of " + std::to_string(inside) + "[TU]\n");
                 if (!inside) {
+                    #ifdef PROFILING_ENABLE
+                    TracyMessageL("Agent is inside temporal window to fire transition");
+                    #endif
                     //I'm inside window, I'm the first agent trying to fire the transition
                     // and I'm sensitized. I'll make the fire
                     //logger->record("Temporal agent #" + agent->getStrId() + " is inside temporal window to fire transition number " + std::to_string(transition) + "\n");
@@ -84,6 +128,9 @@ bool Monitor::fire_temporal(Agent* agent, uint32_t transition) {
                     wake_up();
                     guard.unlock();
                     hodor->release();
+                    #ifdef PROFILING_ENABLE
+                    TracyMessageL("Agent leaves monitor after fire temporal transition");
+                    #endif
                     return true;
                 }
                 else {
@@ -96,6 +143,9 @@ bool Monitor::fire_temporal(Agent* agent, uint32_t transition) {
                         agent->sleep_for(inside);
                         guard.unlock();
                         hodor->release();
+                        #ifdef PROFILING_ENABLE
+                        TracyMessageL("Agent leaves monitor because is early to fire transition");
+                        #endif
                         return false;
                     }
                 }
@@ -107,6 +157,9 @@ bool Monitor::fire_temporal(Agent* agent, uint32_t transition) {
         guard.unlock();
         hodor->release();
         temporal_queue->addAgent(transition, agent);
+        #ifdef PROFILING_ENABLE
+        TracyMessageL("Agent leaves monitor after puts itself in queue");
+        #endif
         return false;
     }
     catch (const std::exception& ex) {

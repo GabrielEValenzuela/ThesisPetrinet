@@ -12,6 +12,10 @@
 #include "Queue.hpp"
 #include "Logger.hpp"
 #include "../lib/MathEngine.hpp"
+#define PROFILING_ENABLE 0
+#ifdef PROFILING_ENABLE
+#include "../lib/tracy/Tracy.hpp"
+#endif
 
 /*
     The Monitor class is the main resposable of the program's concurrency
@@ -21,11 +25,17 @@ class PetriNetwork;
 class Queue;
 class Agent;
 
+
+
 class Monitor {
 private:
     std::atomic<uint64_t> fire_counter{ 0 };
     int32_t test_counter{ 0 };
+    #ifdef PROFILING_ENABLE
+    TracyLockableN(std::mutex,mutex,"Mutex's monitor both entries");
+    #else
     std::mutex mutex;
+    #endif
     std::unique_ptr<std::binary_semaphore> hodor;
     std::shared_ptr<PetriNetwork> petri_instance;
     std::shared_ptr<Logger> logger;

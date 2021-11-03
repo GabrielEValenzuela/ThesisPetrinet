@@ -166,6 +166,8 @@ public:
 
     const std::vector<int>& getRow(uint32_t row_number);
 
+    const std::vector<int>& getRowPre(uint32_t row_number);
+
     void printMark();
 
     void setMark(std::vector<uint32_t>* mark);

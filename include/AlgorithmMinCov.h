@@ -26,23 +26,36 @@ private:
     //Root node
 	std::shared_ptr<NodeState> root;
 
+    std::unique_ptr<std::vector<int32_t>> total_tokens_incidence;
+    std::unique_ptr<std::vector<int32_t>> total_tokens_preincidence;
+
     uint32_t amount_places_pn;
 
     uint32_t amount_transitions_pn;
 
     bool bfs_trasversal {true};
     //==============================
-    void generateAllChildren(std::shared_ptr<NodeState>& parent_node);
 
-    void checkAccelerationsSet(std::shared_ptr<NodeState>& node);
+    /*
+        This algorithm defines four phases:
 
-    void checkBiggerMark(std::shared_ptr<NodeState>& node);
+        generationPhase -> From the current node, generate all possible children from it only if active, else remove it.
 
-    void accelerateNode(std::shared_ptr<NodeState>& node);
+        explorationPhase -> Look for smaller nodes, and deactivate them. If the current mark if the bigger
+        try the acceleration.
 
-    void deleteAllSmaller(std::shared_ptr<NodeState>& node);
+        accelerationPhase -> For all p in P, for all t in T, check for t if the number of inputs for the place p
+        is greater than the number of outputs. If this is True, then the place p for the transition t has a omega token.
 
-    void generateOmegaTransitions(std::shared_ptr<NodeState>& node);
+        filterPhase -> If the node has been accelerated, deactivate and set this node as parent node, add node to MinCov
+        and put the node on the unprocessed set.
+    */
+
+    void generationPhase(NodeState* parent_node);
+
+    void explorationPhase(NodeState* current_node);
+
+    void accelerationPhase(NodeState* current_node);
 
     void updateUnprocessedSet();
 
@@ -50,6 +63,18 @@ private:
 
     void start();
     /*
+    void generateAllChildren(std::shared_ptr<NodeState>& parent_node);
+
+    void checkAccelerationsSet(std::shared_ptr<NodeState>& current_node);
+
+    void checkBiggerMark(std::shared_ptr<NodeState>& current_node);
+
+    void accelerateNode(std::shared_ptr<NodeState>& current_node);
+
+    void deleteAllSmaller(std::shared_ptr<NodeState>& current_node);
+
+    void generateOmegaTransitions(std::shared_ptr<NodeState>& current_node);
+    
     uint32_t deep = { 1 };
     std::shared_ptr<PetriNetwork> petrinet;
     std::unique_ptr<std::unordered_map<std::string, std::shared_ptr<NodeState>>> unprocessed_set;

@@ -12,7 +12,7 @@ void NodeState::make_hash()
 	uuid = std::move(hasher.final());
 }
 
-NodeState::NodeState(int32_t fire, std::unique_ptr<std::vector<uint32_t>> mark, std::unique_ptr<std::vector<uint8_t>> sensitized, std::shared_ptr<NodeState> new_parent)
+NodeState::NodeState(int32_t fire, std::unique_ptr<std::vector<uint32_t>> mark, std::unique_ptr<std::vector<uint8_t>> sensitized, NodeState* new_parent)
 	:who_fire_me{fire},
 	network_mark{std::move(mark)},
 	network_sensitized{std::move(sensitized)},
@@ -20,7 +20,7 @@ NodeState::NodeState(int32_t fire, std::unique_ptr<std::vector<uint32_t>> mark, 
 {
 	this->node_children = std::make_unique< std::vector<std::shared_ptr<NodeState>>>();
 	make_hash();
-	this->deep = node_parent->getDeep()+1;
+	addDeep();
 }
 
 uint8_t NodeState::isActive()
@@ -45,6 +45,20 @@ uint16_t NodeState::getDeep(){
 	return deep;
 }
 
+void NodeState::addDeep(){
+	if(node_parent==nullptr){
+		deep += 1;
+	} else {
+		deep += node_parent->getDeep();
+	}
+}
+
+void NodeState::deactiveDescendents(){
+	for(auto child : *(node_children.get())){
+		child->deactiveDescendents();
+	}
+}
+
 void NodeState::addChildren(std::shared_ptr<NodeState> new_child)
 {
 	node_children->push_back(new_child);
@@ -65,6 +79,15 @@ std::string& NodeState::getNodeId()
 	return uuid;
 }
 
+void NodeState::changeMarkAssociate(std::unique_ptr<std::vector<uint32_t>> mark)
+{
+	this->network_mark = std::move(mark);
+}
+
+int32_t NodeState::getFire(){
+	return who_fire_me;
+}
+
 std::vector<uint8_t>* NodeState::getSensitizedAssociate()
 {
 	return network_sensitized.get();
@@ -82,5 +105,5 @@ std::vector<std::shared_ptr<NodeState>>& NodeState::getChildren()
 
 NodeState* NodeState::getParentNode()
 {
-	return node_parent.get();
+	return node_parent;
 }

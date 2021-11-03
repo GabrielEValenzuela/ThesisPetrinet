@@ -43,8 +43,35 @@ void Engine::menuAlgorithms() {
     std::cin >> option;
     switch (option) {
     case 1: {
-        std::cout << "Coming soon... \n";
-        return;
+        if(instance.get()!=nullptr){
+            AlgorithmMinCov* algo = new AlgorithmMinCov();
+            algo->runAlgorithm(instance);            
+        } else {
+            std::string file_name;
+            std::cout<<"Please, introduce the filename:";
+            std::cin >> file_name;
+
+             std::regex pattern("(\\w+)(\\.)(\\w+)");
+        std::smatch sm_file;
+        std::regex_search(file_name,sm_file,pattern);
+        if(!std::strcmp(sm_file.str(3).c_str(),"json")){
+            std::ifstream f(file_name);
+            if(f.bad()){
+                std::cout<<"File <"<<sm_file.str(1)<<"> not found. Please try again\n";
+                return;
+            }
+            json_file = std::make_unique<ReadJSON>();
+            if (json_file->readFile(file_name) == -1) {
+                std::cout << "Invalid JSON file\n";
+                return;
+            }
+            
+            EngineFactory();
+            AlgorithmMinCov* algo = new AlgorithmMinCov();
+            algo->runAlgorithm(instance);
+        }
+            
+        }
     }
     case 2: {
         if (simulation_done) {

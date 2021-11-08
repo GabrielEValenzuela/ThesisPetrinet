@@ -13,7 +13,7 @@ class NodeState {
 private:
 	SHA1 hasher;
 	std::string uuid;
-	const int32_t OMEGA = std::numeric_limits<uint32_t>::max();
+	const uint32_t OMEGA = std::numeric_limits<uint32_t>::max();
 	std::unique_ptr<std::vector<uint32_t>> network_mark;
 	std::unique_ptr<std::vector<uint8_t>> network_sensitized;
 	std::unique_ptr<std::vector<std::shared_ptr<NodeState>>> node_children;

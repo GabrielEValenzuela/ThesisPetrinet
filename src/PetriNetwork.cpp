@@ -140,6 +140,10 @@ const std::vector<int>& PetriNetwork::getRowPre(uint32_t row_number){
     return disc_pre_matrix->getRow(row_number);
 }
 
+const std::vector<int>& PetriNetwork::getRowPost(uint32_t row_number) {
+    return disc_post_matrix->getRow(row_number);
+}
+
 void PetriNetwork::checkSpecialCase(uint32_t transition)
 {
     if (last_sensitized->at(transition) == current_sensitized->at(transition)) {

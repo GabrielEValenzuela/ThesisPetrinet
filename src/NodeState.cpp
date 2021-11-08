@@ -47,9 +47,9 @@ uint16_t NodeState::getDeep(){
 
 void NodeState::addDeep(){
 	if(node_parent==nullptr){
-		deep += 1;
+		deep=1;
 	} else {
-		deep += node_parent->getDeep();
+		deep = deep + node_parent->getDeep();
 	}
 }
 

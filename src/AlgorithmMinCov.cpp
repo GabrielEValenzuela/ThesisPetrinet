@@ -10,11 +10,12 @@ void AlgorithmMinCov::runAlgorithm(std::shared_ptr<PetriNetwork> petri_instance)
 	auto time = std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count();
 	std::cout << "***DONE***\t Algorithm minimal coverability tree has end successfully.\n";
 	std::cout << "Take " << time << " ms\n";
-	std::cout << "Amount nodes processed: "<<amount_processed_nodes<<"\t Amount nodes accelerated: "<<amount_accelerated_nodes<<"\n";
-	std::cout << "Printing nodes...\n";
+	std::cout << "Amount nodes processed: " << amount_processed_nodes << "\t Amount nodes accelerated: " << amount_accelerated_nodes << "\t Amount nodes created: " << amount_created_nodes << "\n";
+	std::cout << "Printing nodes...\n\n";
 	std::this_thread::sleep_for(1s);
 	for(auto node : *processed_set){
 		std::cout << node;
+		std::cout << "\n\n";
 	}
 
 	return;
@@ -23,41 +24,35 @@ void AlgorithmMinCov::runAlgorithm(std::shared_ptr<PetriNetwork> petri_instance)
 void AlgorithmMinCov::start()
 {
 	setupAlgorithm();
-	std::cout<<"Start algorithm\n";
+	//std::cout<<"Start algorithm\n";
 	while (unprocessed_set->size() > 0)
 	{
-		auto parent_node = bfs_trasversal ? unprocessed_set->begin()->second : unprocessed_set->end()->second;
-		std::cout<<"Processing parent node:\n"<<parent_node<<"\n\n";
-		if (parent_node->isActive())
+		auto current_node = bfs_trasversal ? unprocessed_set->begin()->second : unprocessed_set->end()->second;
+		if (current_node->isActive())
 		{
-			std::cout<<"Its active\n";
-			generationPhase(parent_node.get());
+			amount_processed_nodes++;
+			//std::cout<<"Its active\n";
+			//std::cout<<"Processing current node:\n"<<current_node<<"\n\n";
 
-			std::cout<<"generationPhase pass\n"<<parent_node<<"\n\n";
+			explorationPhase(current_node.get());
 
-			auto current_node = bfs_trasversal ? parent_node->getChildren().begin()->get() : parent_node->getChildren().end()->get();
-
-			std::cout<<"Processing current node:\n"<<current_node<<"\n\n";
-
-			explorationPhase(current_node);
-
-			std::cout<<"explorationPhase pass\n"<<current_node<<"\n\n";
+			//std::cout<<"explorationPhase pass\n"<<current_node<<"\n\n";
 
 			if(current_node->isActive()){
-				accelerationPhase(current_node);
-				std::cout<<"accelerationPhase pass\n"<<current_node<<"\n\n";
-			} else {
-				std::cout<<"Node not accelerated...generating his children and deactivating him\n";
-				processed_set->emplace_back(current_node);
-				generationPhase(current_node);
-				current_node->deactivateNode();
-				parent_node->deactivateNode();
+				accelerationPhase(current_node.get());
+				//std::cout<<"accelerationPhase pass\n"<<current_node<<"\n\n";
+
+				if (!current_node->isAccelerated()) {
+					processed_set->emplace_back(current_node);
+					generationPhase(current_node.get());
+					current_node->deactivateNode();
+				}
 			}
 		}
 
 		else
 		{
-			unprocessed_set->erase(parent_node->getNodeId());
+			unprocessed_set->erase(current_node->getNodeId());
 		}
 	}
 }
@@ -79,8 +74,9 @@ void AlgorithmMinCov::generationPhase(NodeState* parent_node)
 
 			auto child_node = std::make_shared<NodeState>(t, std::move(new_mark), std::move(new_sensitized), parent_node);
 
-			if (unprocessed_set->find(child_node->getNodeId()) == 0)
+			if (unprocessed_set->count(child_node->getNodeId()) != 1)
 			{
+				amount_created_nodes++;
 				parent_node->addChildren(child_node);
 				unprocessed_set->insert({child_node->getNodeId(), child_node});
 			}
@@ -118,12 +114,13 @@ void AlgorithmMinCov::explorationPhase(NodeState *current_node)
 void AlgorithmMinCov::accelerationPhase(NodeState* current_node){
 	bool has_been_accelerated = false;
 	for(auto place = 0; place < current_node->getMarkAssociate()->size();place++){
-		if(total_tokens_incidence->at(place)>total_tokens_preincidence->at(place)){
+		if(average_tokens_total->at(place)>0){
 			current_node->getMarkAssociate()->at(place) = OMEGA;
 			has_been_accelerated = true;
 		}
 	}
-	if(has_been_accelerated){
+
+	if (has_been_accelerated) {
 		current_node->setAccelerated();
 		current_node->deactivateNode();
 		processed_set->emplace_back(current_node);
@@ -140,16 +137,16 @@ void AlgorithmMinCov::setupAlgorithm()
 	amount_places_pn = petrinet->getPlaces();
 	amount_transitions_pn = petrinet->getTransitions();
 
-	total_tokens_incidence = std::make_unique<std::vector<int32_t>>(amount_places_pn);
+	average_tokens_total = std::make_unique<std::vector<int32_t>>(amount_places_pn);
 
-	total_tokens_preincidence = std::make_unique<std::vector<int32_t>>(amount_places_pn);
+	//total_tokens_preincidence = std::make_unique<std::vector<int32_t>>(amount_places_pn);
 
 	for(auto t = 0; t < amount_transitions_pn;t++){
 		auto row = petrinet->getRow(t);
-		auto row_pre = petrinet->getRowPre(t);
+		//auto row_pre = petrinet->getRowPre(t);
 		for(auto p = 0; p < amount_places_pn;p++){
-			total_tokens_incidence->at(p) += row.at(p);
-			total_tokens_preincidence->at(p) += row_pre.at(p);
+			average_tokens_total->at(p) += row.at(p);
+			//total_tokens_preincidence->at(p) += row_pre.at(p);
 		}
 	}
 
@@ -162,7 +159,8 @@ void AlgorithmMinCov::setupAlgorithm()
 	this->root = std::make_shared<NodeState>(-1, std::move(init_mark), std::move(init_sens), nullptr);
 
 	processed_set->emplace_back(root);
-	unprocessed_set->insert({root->getNodeId(),root});
+	generationPhase(root.get());
+	root->deactivateNode();
 }
 
 /*

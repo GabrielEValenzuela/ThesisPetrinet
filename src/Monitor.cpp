@@ -70,11 +70,9 @@ bool Monitor::fire_immediate(Agent* agent, uint32_t transition) {
     }
 }
 
-#ifdef PROFILING_ENABLE
-ZoneScopedN("TemporalEntry");
-#endif
 bool Monitor::fire_temporal(Agent* agent, uint32_t transition) {
     #ifdef PROFILING_ENABLE
+    ZoneScopedN("TemporalEntry");
     TracyMessageL("Agent try to acquire semaphore");
     hodor->acquire();
     std::unique_lock<LockableBase(std::mutex)> guard(mutex);

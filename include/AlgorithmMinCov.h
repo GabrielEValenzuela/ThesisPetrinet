@@ -15,7 +15,8 @@ class AlgorithmMinCov : public AlgorithmEngine {
 private:
     uint32_t amount_accelerated_nodes{0};
     uint32_t amount_processed_nodes {0};
-    const int32_t OMEGA = std::numeric_limits<uint32_t>::max();
+    uint32_t amount_created_nodes{ 1 };
+    const uint32_t OMEGA = std::numeric_limits<uint32_t>::max();
     std::shared_ptr<PetriNetwork> petrinet;
     //Front a.k.a unprocessed nodes
     std::unique_ptr<std::unordered_map<std::string, std::shared_ptr<NodeState>>> unprocessed_set;
@@ -26,8 +27,8 @@ private:
     //Root node
 	std::shared_ptr<NodeState> root;
 
-    std::unique_ptr<std::vector<int32_t>> total_tokens_incidence;
-    std::unique_ptr<std::vector<int32_t>> total_tokens_preincidence;
+    std::unique_ptr<std::vector<int32_t>> average_tokens_total;
+    //std::unique_ptr<std::vector<int32_t>> total_tokens_preincidence;
 
     uint32_t amount_places_pn;
 
@@ -56,8 +57,6 @@ private:
     void explorationPhase(NodeState* current_node);
 
     void accelerationPhase(NodeState* current_node);
-
-    void updateUnprocessedSet();
 
     void setupAlgorithm();
 

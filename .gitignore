@@ -35,3 +35,5 @@
 ./build/*
 ./out/*
 ./tests/*
+/out/build/x64-Debug
+/.vs

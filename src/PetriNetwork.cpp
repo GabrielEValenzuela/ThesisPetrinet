@@ -13,6 +13,14 @@ void PetriNetwork::printMark() {
     std::cout << "]\n";
 }
 
+void PetriNetwork::setName(std::string&& name){
+    petri_name = std::move(name);
+}
+
+std::string& PetriNetwork::getName(){
+    return petri_name;
+}
+
 void PetriNetwork::setMark(std::vector<uint32_t>* mark)
 {
     std::copy(std::execution::unseq, mark->begin(), mark->end(), disc_mark->begin());
@@ -37,8 +45,12 @@ void PetriNetwork::setExtendedMatrixes(std::unique_ptr<PetriMatrix<uint8_t>> inh
 
 void PetriNetwork::setAuxiliarsVectors(std::unique_ptr<std::vector<uint8_t>> b_vector, std::unique_ptr<std::vector<uint8_t>> l_vector)
 {
-    q_vec = std::make_unique<std::vector<uint8_t>>(this->places);
-    w_vec = std::make_unique<std::vector<uint8_t>>(this->places);
+    q_vec       = std::make_unique<std::vector<uint8_t>>(this->places);
+    w_vec       = std::make_unique<std::vector<uint8_t>>(this->places);
+    q_vec_aux   = std::make_unique<std::vector<uint8_t>>(this->places);
+    w_vec_aux   = std::make_unique<std::vector<uint8_t>>(this->places);
+    b_vec_aux   = std::make_unique<std::vector<uint8_t>>(transitions);
+    l_vec_aux   = std::make_unique<std::vector<uint8_t>>(transitions);
     this->b_vec = std::move(b_vector);
     this->l_vec = std::move(l_vector);
 }
@@ -80,6 +92,31 @@ bool PetriNetwork::isEarly(uint32_t transition, const std::chrono::high_resoluti
     return time_unit->isEarly(temporal_window->at(transition).first, timestamp);
 }
 
+std::shared_ptr<std::vector<uint8_t>> PetriNetwork::applyExtendedEquation(std::vector<uint32_t>* mark,std::vector<int32_t>* row_pre){
+    auto sensitized = std::make_shared<std::vector<uint8_t>>(transitions);
+    std::transform(std::execution::unseq, mark->begin(), mark->end(), q_vec_aux->begin(), [](uint32_t mark) {return mark > 0; });
+    std::transform(std::execution::unseq, mark->begin(), mark->end(), w_vec_aux->begin(), [](uint32_t mark) {return mark <= 0; });
+
+
+    for (auto transition = 0; transition < transitions; transition++) {
+        std::transform(std::execution::unseq, q_vec_aux->begin(), q_vec_aux->end(), inhibitor_matrix->getRow(transition).begin(), aux_vec->begin(), [](uint8_t a, uint8_t b) {return a && b; });
+        b_vec_aux->at(transition) = std::any_of(std::execution::unseq, aux_vec->begin(), aux_vec->end(), [](uint8_t b) {return b; });
+        std::transform(std::execution::unseq, w_vec_aux->begin(), w_vec_aux->end(), reader_matrix->getRow(transition).begin(), aux_vec->begin(), [](uint8_t a, uint8_t b) {return a && b; });
+        l_vec_aux->at(transition) = std::any_of(std::execution::unseq, aux_vec->begin(), aux_vec->end(), [](uint8_t b) {return b; });
+    }
+
+    for (size_t t = 0; t < transitions; t++) {
+        std::transform(std::execution::unseq, mark->begin(), mark->end(), row_pre->begin(), aux_vec->begin(), [](uint32_t m, int32_t i) { return m >= i; });
+        sensitized->at(t) = std::all_of(std::execution::unseq, aux_vec->begin(), aux_vec->end(), [](uint8_t e) {return e; });
+    }
+
+    std::transform(std::execution::unseq,sensitized->begin(), sensitized->end(), guard_vec->begin(), sensitized->begin(), [](uint8_t a, uint8_t b) {return a && b; });
+    std::transform(std::execution::unseq,sensitized->begin(), sensitized->end(), event_vec->begin(), sensitized->begin(), [](uint8_t a, uint8_t b) {return a && b; });
+    std::transform(std::execution::unseq,sensitized->begin(), sensitized->end(), b_vec_aux->begin(), sensitized->begin(), [](uint8_t s, uint8_t b) {return s && !b; });
+    std::transform(std::execution::unseq,sensitized->begin(), sensitized->end(), l_vec_aux->begin(), sensitized->begin(), [](uint8_t s, uint8_t b) {return s && !b; });
+
+    return sensitized;
+}
 
 void PetriNetwork::updateSensitized() {
     /*

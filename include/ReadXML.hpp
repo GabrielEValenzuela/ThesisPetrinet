@@ -22,4 +22,5 @@ public:
     Network_Choice::type getNetworkType();
     uint32_t getNumberPlaces() override;
     uint32_t getNumberTransitions() override;
+    std::string networkName() override;
 };

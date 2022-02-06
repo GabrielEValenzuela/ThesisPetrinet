@@ -194,3 +194,7 @@ Timescale_Choice::unit ReadJSON::getTimeScale() {
         return Timescale_Choice::unit::ERR;
     }
 }
+
+std::string ReadJSON::networkName() {
+    return file_json["network"]["id"].get<std::string>();
+}

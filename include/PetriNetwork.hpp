@@ -23,6 +23,11 @@ private:
     std::unique_ptr<std::vector<uint8_t>> b_vec;
     std::unique_ptr<std::vector<uint8_t>> l_vec;
 
+    std::unique_ptr<std::vector<uint8_t>> q_vec_aux;
+    std::unique_ptr<std::vector<uint8_t>> w_vec_aux;
+    std::unique_ptr<std::vector<uint8_t>> b_vec_aux;
+    std::unique_ptr<std::vector<uint8_t>> l_vec_aux;
+
     std::unique_ptr<std::vector<uint8_t>> guard_vec;
 
     std::unique_ptr<std::vector<uint8_t>> event_vec;
@@ -74,11 +79,9 @@ private:
     */
     uint32_t transitions   = 0;
 
+    std::string petri_name;
+
     int getValue(uint32_t place,uint32_t transition);
-    /*
-        Logger object used for debugger propuorse
-    */
-    std::shared_ptr<Logger> logger;
 
     /*
         Time unit object, reponsable to calculate all time staff
@@ -91,8 +94,8 @@ private:
    std::unique_ptr<std::vector<std::pair<uint32_t, uint32_t>>> temporal_window;
 
    struct TimeVarianceAuthority {
-       uint32_t alpha;
-       uint32_t beta;
+       uint32_t alpha{0};
+       uint32_t beta{0};
        std::thread::id agent_id;
        std::optional <std::chrono::high_resolution_clock::time_point> timestamp;
    };
@@ -101,11 +104,9 @@ private:
    void checkSpecialCase(uint32_t transition);
    void updateTimestamps();
 
-   void extendedEquation();
 public:
-    void setLogger(std::shared_ptr<Logger>logger) {
-        this->logger = logger;
-    }
+    void setName(std::string&& name);
+    std::string& getName();
     /*
         Set number places for petri network
         @param places Set the total number of places
@@ -176,11 +177,13 @@ public:
 
     void resetNetworkStatus();
 
-    uint32_t getTransitions(){
+    uint32_t getTransitions() const{
         return transitions;
     }
 
-    uint32_t getPlaces() {
+    uint32_t getPlaces() const {
         return places;
     }
+
+    std::shared_ptr<std::vector<uint8_t>> applyExtendedEquation(std::vector<uint32_t>* mark,std::vector<int32_t>* row_pre);
 };

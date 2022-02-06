@@ -6,7 +6,6 @@ Monitor::Monitor(std::shared_ptr<PetriNetwork> petri_network) {
     temporal_filter = std::make_unique<std::unordered_map<uint32_t, std::thread::id>>();
     immediate_queue = std::make_unique<Queue>();
     temporal_queue = std::make_unique<Queue>();
-    sensitized_and_available = std::make_unique<std::vector<bool>>(petri_instance->getTransitions());
     hodor = std::make_unique<std::binary_semaphore>(1);
 
 }
@@ -31,6 +30,8 @@ bool Monitor::fire_immediate(Agent* agent, uint32_t transition) {
             #ifdef PROFILING_ENABLE
             TracyMessageL("Agent is enable to fire transition");
             #endif
+            logger::record r = {.transition=transition,.type="immediate",.action="fire",.timestamp=generateTimestamp(),.thread_id=agent->getStrId()};
+            logger.emplace_back(r);
             //logger->record("Agent #" + agent->getStrId() + " will fire transition number " + std::to_string(transition) + "\n");
             //logger->addFire(transition);
             auto new_mark = std::make_unique<std::vector<uint32_t>>(petri_instance->getMark()->size());
@@ -52,8 +53,8 @@ bool Monitor::fire_immediate(Agent* agent, uint32_t transition) {
             #ifdef PROFILING_ENABLE
             TracyMessageL("Agent is not enable to fire transition");
             #endif
-            //logger->record("Agent #" + agent->getStrId() + " go to queue to wait for transition " + std::to_string(transition) + "\n");
-            //logger->record("Immediate queue size " + std::to_string(immediate_queue->getSize()) + "\n");
+            logger::record r = {.transition=transition,.type="immediate",.action="sleep",.timestamp=generateTimestamp(),.thread_id=agent->getStrId()};
+            logger.emplace_back(r);
             checkAndUnlock();
             guard.unlock();
             immediate_queue->addAgent(transition, agent);
@@ -117,6 +118,8 @@ bool Monitor::fire_temporal(Agent* agent, uint32_t transition) {
                     */
                     //logger->record("Temporal agent #" + agent->getStrId() + " will fire transition number " + std::to_string(transition) + "\n");
                     //logger->addFire(transition);
+                    logger::record r = {.transition=transition,.type="temporal",.action="fire",.timestamp=generateTimestamp(),.thread_id=agent->getStrId()};
+                    logger.emplace_back(r);
                     auto new_mark = std::make_unique<std::vector<uint32_t>>(petri_instance->getMark()->size());
                     MathEngine::fire(petri_instance->getMark(), petri_instance->getRow(transition), new_mark.get());
                     petri_instance->setMark(std::move(new_mark));
@@ -138,6 +141,8 @@ bool Monitor::fire_temporal(Agent* agent, uint32_t transition) {
                     if (inside > 0) {
                         //logger->record("Temporal agent #" + agent->getStrId() + " is early fire transition number because time difference is positive" + std::to_string(transition) + "\n");
                         //logger->record("Temporal agent #" + agent->getStrId() + " will sleep for " + std::to_string(inside) + "[UT]\n");
+                        logger::record r = {.transition=transition,.type="temporal",.action="sleep",.timestamp=generateTimestamp(),.thread_id=agent->getStrId()};
+                        logger.emplace_back(r);
                         agent->sleep_for(inside);
                         guard.unlock();
                         hodor->release();
@@ -151,9 +156,12 @@ bool Monitor::fire_temporal(Agent* agent, uint32_t transition) {
         }
         //logger->record("Temporal agent #" + agent->getStrId() + " go to queue to wait for transition " + std::to_string(transition) + "\n");
         //logger->record("Temporal queue size " + std::to_string(temporal_queue->getSize()) + "\n");
+        logger::record r = {.transition=transition,.type="temporal",.action="wait",.timestamp=generateTimestamp(),.thread_id=agent->getStrId()};
+        logger.emplace_back(r);
         checkAndUnlock();
         guard.unlock();
         hodor->release();
+
         temporal_queue->addAgent(transition, agent);
         #ifdef PROFILING_ENABLE
         TracyMessageL("Agent leaves monitor after puts itself in queue");
@@ -212,47 +220,43 @@ bool Monitor::isAnotherFirst(uint32_t transition, Agent* agent) const {
 
 }
 
-void Monitor::setLogger(std::shared_ptr<Logger> logger) {
-    this->logger = logger;
-}
-
 void Monitor::setTotalAgents(uint64_t total)
 {
     total_agents = total;
 }
 
-bool Monitor::hasBlock()
-{
-    return (immediate_queue->getSize()+temporal_queue->getSize())==total_agents;
-}
-
 void Monitor::wake_up() {
     auto waiting = immediate_queue->transitionsWaiting();
-    for (auto wait_number = 0; wait_number < waiting.size(); wait_number++) {
-        if (petri_instance->isSensitized(waiting.at(wait_number))) {
-            auto awake = immediate_queue->getAgent(waiting.at(wait_number), 0);
+    for (unsigned int wait_number : waiting) {
+        if (petri_instance->isSensitized(wait_number)) {
+            auto awake = immediate_queue->getAgent(wait_number, 0);
             if (awake != nullptr) {
-                //auto stamp = time_point_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now());
-                //log_file << date::format("%T", stamp)<< " - Agent #" << awake->getId() << " is awake to fire " << waiting.at(wait_number) << " successfully \n";
-                //logger->record("Agent #" + awake->getStrId() + " wake up to fire " + std::to_string(waiting.at(wait_number)) + "\n");
+                logger::record r = {.transition=wait_number,.type="immediate",.action="wake_up",.timestamp=generateTimestamp(),.thread_id=awake->getStrId()};
+                logger.emplace_back(r);
                 awake->resume();
                 return;
             }
         }
     }
     waiting = temporal_queue->transitionsWaiting();
-    for (auto wait_number = 0; wait_number < waiting.size(); wait_number++) {
-        if (petri_instance->isSensitized(waiting.at(wait_number))) {
-            auto awake = temporal_queue->getAgent(waiting.at(wait_number), 0);
+    for (unsigned int wait_number : waiting) {
+        if (petri_instance->isSensitized(wait_number)) {
+            auto awake = temporal_queue->getAgent(wait_number, 0);
             if (awake != nullptr) {
-                //auto stamp = time_point_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now());
-                //log_file << date::format("%T", stamp)<< " - Agent #" << awake->getId() << " is awake to fire " << waiting.at(wait_number) << " successfully \n";
-                //logger->record("Temporal agent #" + awake->getStrId() + " wake up to fire " + std::to_string(waiting.at(wait_number)) + "\n");
+                logger::record r = {.transition=wait_number,.type="immediate",.action="wake_up",.timestamp=generateTimestamp(),.thread_id=awake->getStrId()};
+                logger.emplace_back(r);
                 awake->resume();
 
                 return;
             }
         }
     }
-    //logger->record("No agents immediate neiter temporal to wake up. Queues size (I:" + std::to_string(immediate_queue->getSize()) + "/T:" + std::to_string(temporal_queue->getSize()) + ")\n");
+}
+
+std::string Monitor::generateTimestamp() {
+    std::time_t now_tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::tm tm = *std::localtime(&now_tt);
+    std::stringstream ss;
+    ss << std::put_time(&tm, "%F - %T%z%Z");
+    return ss.str();
 }

@@ -11,6 +11,7 @@ void PlaceTransitionNet::setFile(std::unique_ptr<ReadFile> load_file){
 
 std::shared_ptr<PetriNetwork> PlaceTransitionNet::getPetrinet() {
     setDependencyInjection();
+    petri_instance->setName(file->networkName());
     return petri_instance;
 }
 

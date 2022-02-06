@@ -24,4 +24,5 @@ class ReadFile{
     virtual void readArcsInhibitor(PetriMatrix<uint8_t>* inhibitor_matrix) = 0;
     virtual void readArcsReader(PetriMatrix<uint8_t>* reader_matrix) = 0;
     virtual void readArcsReset(std::vector<uint8_t>* reset_vector) = 0;
+    virtual std::string networkName() = 0;
 };

@@ -24,7 +24,7 @@
 #include "SecoTimeLogic.hpp"
 #include "MinuTimeLogic.hpp"
 #include "HourTimeLogic.hpp"
-#include "AlgorithmMinCov.h"
+#include "AlgorithmMinCov.hpp"
 #include "../lib/util.hpp"
 #include "../lib/AnalysisEngine.hpp"
 #include "../lib/json.hpp"
@@ -35,29 +35,24 @@
 */
 class Engine{
     private:
-        void EngineFactory();
         std::unique_ptr<ReadJSON> json_file;
-        void simulateJSON();
-        void displaySimulateResult();
-        void configureTimeScale();
-        void confinAndRun();
-        void displayMenu();
-        const uint16_t major = 2;
-        const uint16_t minor = 0;
+        std::unique_ptr<ReadXML>  pnml_file;
         uint64_t max_fires{ 0 };
         std::shared_ptr<Monitor> the_monitor;
         std::shared_ptr<PetriNetwork> instance;
         std::shared_ptr<TimeLogic> the_timelogic;
-        std::shared_ptr<Logger> logger;
         std::unique_ptr<PetriBuilder> petri_type;
         std::vector<std::unique_ptr<Agent>> pool_agent;
         std::unique_ptr<PetriDirector> petri_director;
         Timescale_Choice::unit scale_time;
         AgentFactory factory;
-        void config_pool();
-        bool simulation_done;
-        void menuAlgorithms();
-    public:
+        bool json_pnml{true};
+        void simulationFactory();
+        void petriFactory();
+        void configureTimeScale();
+        bool validateFilename(std::string& filename);
         void runSimulation();
-        void run();
+        void runAlgorithm();
+    public:
+        void run(std::string&& filename,uint8_t operation);
 };

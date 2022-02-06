@@ -110,3 +110,7 @@ uint32_t ReadXML::getNumberPlaces(){
 uint32_t ReadXML::getNumberTransitions(){
     return number_transitions;
 }
+
+std::string ReadXML::networkName(){
+    return "";
+}

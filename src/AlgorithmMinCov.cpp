@@ -1,329 +1,213 @@
-#include "../include/AlgorithmMinCov.h"
-using namespace std::chrono_literals;
+#include "../include/AlgorithmMinCov.hpp"
+
 void AlgorithmMinCov::runAlgorithm(std::shared_ptr<PetriNetwork> petri_instance)
 {
-	this->petrinet = petri_instance;
-	std::cout << "Runing minimal coverability tree algorithm...\n";
-	auto s = std::chrono::high_resolution_clock::now();
-	start();
-	auto e = std::chrono::high_resolution_clock::now();
-	auto time = std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count();
-	std::cout << "***DONE***\t Algorithm minimal coverability tree has end successfully.\n";
-	std::cout << "Take " << time << " ms\n";
-	std::cout << "Amount nodes processed: " << amount_processed_nodes << "\t Amount nodes accelerated: " << amount_accelerated_nodes << "\t Amount nodes created: " << amount_created_nodes << "\n";
-	std::cout << "Printing nodes...\n\n";
-	std::this_thread::sleep_for(1s);
-	for(auto node : *processed_set){
-		std::cout << node;
-		std::cout << "\n\n";
-	}
-
-	return;
+    this->petrinet = petri_instance;
+    std::cout << "Running minimal coverability tree algorithm...\n";
+    auto s = std::chrono::high_resolution_clock::now();
+    runMinCov();
+    auto e = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::micro> time = e - s;
+    std::cout << "***DONE***\t Algorithm minimal coverability tree has end successfully.\n";
+    std::cout << "Take " << time.count() << " us\n";
+    std::cout << "\n\n";
+    OutputParser::MinCovOut(processed_set.get(),time.count(),petrinet.get());
+    exit(0);
 }
 
-void AlgorithmMinCov::start()
+void AlgorithmMinCov::runMinCov()
 {
-	setupAlgorithm();
-	//std::cout<<"Start algorithm\n";
-	while (unprocessed_set->size() > 0)
-	{
-		auto current_node = bfs_trasversal ? unprocessed_set->begin()->second : unprocessed_set->end()->second;
-		if (current_node->isActive())
-		{
-			amount_processed_nodes++;
-			//std::cout<<"Its active\n";
-			//std::cout<<"Processing current node:\n"<<current_node<<"\n\n";
+    // Setup all containers
+    unprocessed_set = std::make_unique<std::deque<PotentialNode_t>>();
+    processed_set = std::make_unique<std::unordered_map<std::string, std::shared_ptr<NodeState>>>();
+    accelereted_set = std::make_unique<std::vector<std::shared_ptr<OmegaTransition>>>();
+    transitions = std::make_unique<std::vector<std::shared_ptr<OmegaTransition>>>();
+    filter_set = std::make_unique<std::unordered_set<std::string>>();
 
-			explorationPhase(current_node.get());
+    // Generate all OmegaTransitions from the petri instance
+    for (auto t = 0; t < petrinet->getTransitions(); t++)
+    {
+        auto row_pre = std::make_unique<std::vector<int>>(petrinet->getPlaces());
+        auto row_inc = std::make_unique<std::vector<int>>(petrinet->getPlaces());
+        std::copy(petrinet->getRow(t).begin(), petrinet->getRow(t).end(), row_inc->begin());
+        std::copy(petrinet->getRowPre(t).begin(), petrinet->getRowPre(t).end(), row_pre->begin());
+        transitions->emplace_back(std::make_shared<OmegaTransition>(std::move(row_inc), std::move(row_pre), petrinet));
+    }
 
-			//std::cout<<"explorationPhase pass\n"<<current_node<<"\n\n";
+    // Crete the root node
+    auto init_mark = std::make_unique<std::vector<uint32_t>>(petrinet->getPlaces());
+    std::copy(petrinet->getInitialMark().begin(), petrinet->getInitialMark().end(),
+              init_mark->begin());
+    auto init_sens = std::make_unique<std::vector<uint8_t>>(petrinet->getTransitions());
+    std::copy(petrinet->getCurrenSensitized().begin(), petrinet->getCurrenSensitized().end(),
+              init_sens->begin());
 
-			if(current_node->isActive()){
-				accelerationPhase(current_node.get());
-				//std::cout<<"accelerationPhase pass\n"<<current_node<<"\n\n";
+    root_node = std::make_shared<NodeState>(-1, nullptr, 0);
+    root_node->setMark(std::move(init_mark));
+    root_node->setSensitized(std::move(init_sens));
+    processed_set->insert_or_assign(generateHash(root_node->getMarkAssociate()), root_node);
+    root_node->setNodeId(processed_set->size());
 
-				if (!current_node->isAccelerated()) {
-					processed_set->emplace_back(current_node);
-					generationPhase(current_node.get());
-					current_node->deactivateNode();
-				}
-			}
-		}
+    current_node = root_node;
 
-		else
-		{
-			unprocessed_set->erase(current_node->getNodeId());
-		}
-	}
+    // 4 o 5 test con red acotadas y luego con snoopy hacer las pruebas omega.
+
+    //===========================================================
+    //=================== INIT ALGORITHM ========================
+    //===========================================================
+
+    updateFrontSet();
+
+    // While there is unprocessed nodes...
+    while (!unprocessed_set->empty())
+    {
+        auto potential_node = unprocessed_set->front();
+
+        amount_created_nodes++;
+
+        current_node = potential_node.parent_node;
+
+        // Take one node, the parent node only if an active node...
+        if (current_node->isActive()){
+            //Generate the mark from the node...
+            auto new_mark = std::make_unique<std::vector<uint32_t>>(petrinet->getPlaces());
+            transitions->at(potential_node.transition)->fireFromMark(current_node->getMarkAssociate(), new_mark.get());
+
+            //Remove candidate node from unprocessed_set...
+            unprocessed_set->pop_front();
+
+            if(filter_set->contains(generateHash(new_mark.get()))){
+                continue;
+            }
+
+            // Step 1) Verify if the node is currently dominated...
+            if(!isDominatedNode(new_mark.get(),root_node.get())){
+                //if not dominated...
+
+                // Step 2) Accelerate node
+                accelerate(potential_node,new_mark.get());
+
+                amount_accelerated_nodes++;
+
+                auto child = std::make_shared<NodeState>(potential_node.transition,current_node,current_node->getDeep()+1);
+
+                child->setMark(std::move(new_mark));
+
+                processed_set->insert_or_assign(generateHash(child->getMarkAssociate()),child);
+
+                child->setNodeId(processed_set->size());
+
+                filter_set->insert(generateHash(child->getMarkAssociate()));
+
+                current_node->addChild(child);
+
+                current_node = child;
+
+                current_node->markAncestors();
+
+                root_node->pruneNode(current_node->getMarkAssociate());
+
+                current_node->unmarkAncestors();
+
+                current_node->setActive();
+
+                updateFrontSet();
+            }
+        } else {
+            unprocessed_set->pop_front();
+        }
+        
+    }
 }
 
-void AlgorithmMinCov::generationPhase(NodeState* parent_node)
+
+void AlgorithmMinCov::updateFrontSet()
 {
-	for (size_t t = 0; t < amount_transitions_pn; t++)
-	{
-		if (parent_node->getSensitizedAssociate()->at(t))
-		{
-			auto new_mark = std::make_unique<std::vector<uint32_t>>(amount_places_pn);
-			auto new_sensitized = std::make_unique<std::vector<uint8_t>>(amount_transitions_pn);
-
-			MathEngine::fire(parent_node->getMarkAssociate(), petrinet->getRow(t), new_mark.get());
-
-			petrinet->setMark(new_mark.get());
-
-			std::copy(std::execution::par_unseq, petrinet->getCurrenSensitized().begin(), petrinet->getCurrenSensitized().end(), new_sensitized->begin());
-
-			auto child_node = std::make_shared<NodeState>(t, std::move(new_mark), std::move(new_sensitized), parent_node);
-
-			if (unprocessed_set->count(child_node->getNodeId()) != 1)
-			{
-				amount_created_nodes++;
-				parent_node->addChildren(child_node);
-				unprocessed_set->insert({child_node->getNodeId(), child_node});
-			}
-		}
-	}
+    for (uint32_t t = 0; t < petrinet->getTransitions(); t++)
+    {
+        if (transitions->at(t)->isSensitizedMark(current_node->getMarkAssociate()))
+        {
+            unprocessed_set->emplace_back(PotentialNode_t{current_node,t});
+        }
+    }
 }
 
-void AlgorithmMinCov::explorationPhase(NodeState *current_node)
+bool AlgorithmMinCov::isDominatedNode(std::vector<uint32_t>* mark,NodeState* currt_node)
 {
-	auto current_mark = current_node->getMarkAssociate();
-	for (auto node : *unprocessed_set)
-	{
-		if (node.second.get() != current_node)
-		{
-			auto node_mark = node.second->getMarkAssociate();
-			for (auto token = 0; token < current_mark->size(); token++)
-			{
-				if (current_mark->at(token) < node_mark->at(token))
-				{
-					//There is a bigger mark, the node is redundant and it's deactivated
-					current_node->deactivateNode();
-					return;
-				}
-				else
-				{
-					//The node covers another node mark
-					node.second->deactivateNode();
-					continue;
-				}
-			}
-		}
-	}
+    if(currt_node->isActive()){
+        if(hasSmallerMark(mark,currt_node->getMarkAssociate())){
+            return true;
+        }
+    }
+
+    for(const auto& child : *currt_node->getChildren()){
+        if(isDominatedNode(mark,child.get())){
+            return true;
+        }
+    }
+
+    return false;
+
 }
 
-void AlgorithmMinCov::accelerationPhase(NodeState* current_node){
-	bool has_been_accelerated = false;
-	for(auto place = 0; place < current_node->getMarkAssociate()->size();place++){
-		if(average_tokens_total->at(place)>0){
-			current_node->getMarkAssociate()->at(place) = OMEGA;
-			has_been_accelerated = true;
-		}
-	}
-
-	if (has_been_accelerated) {
-		current_node->setAccelerated();
-		current_node->deactivateNode();
-		processed_set->emplace_back(current_node);
-		amount_accelerated_nodes++;
-	}
+void AlgorithmMinCov::accelerate(PotentialNode_t& candidate,std::vector<uint32_t>* mark){
+    auto node = candidate.parent_node;
+    while(node != nullptr){
+        if(node->isActive() && (hasSmallerMark(node->getMarkAssociate(),mark))){
+            generateOmegaMarking(mark,candidate);
+        }
+        node = node->getParentNode();
+    }
 }
 
-void AlgorithmMinCov::setupAlgorithm()
+void AlgorithmMinCov::generateOmegaMarking(std::vector<uint32_t>* mark, PotentialNode_t& candidate){
+    for(size_t p = 0; p < petrinet->getPlaces();p++){
+        if(petrinet->getRow(candidate.transition)[p]>petrinet->getRowPre(candidate.transition)[p]){
+            mark->at(p) = OMEGA;
+        }
+        else if(petrinet->getRow(candidate.transition)[p] == 0){
+            continue;
+        }
+        else if(petrinet->getRow(candidate.transition)[p]== 1 && isGrowingUp(mark->at(p),p,candidate)){
+            mark->at(p) = OMEGA;
+        }
+    }
+}
+
+bool AlgorithmMinCov::isGrowingUp(uint32_t mark_tokens,uint32_t place,PotentialNode_t& candidate){
+    auto parent = candidate.parent_node;
+    bool alwaysSensitized = true;
+    bool growUp = mark_tokens > 0;
+    while(parent != nullptr){
+        alwaysSensitized &= parent->isSensitizedAt(candidate.transition);
+        growUp &= parent->getMarkAssociate()->at(place);
+    }
+    return growUp && alwaysSensitized;
+}
+
+std::string AlgorithmMinCov::generateHash(std::vector<uint32_t>* marking){
+    std::stringstream str_builder;
+    str_builder << "[";
+    for (auto m : *marking) {
+        if (m == OMEGA){
+            str_builder << "W ";
+        } else {
+            str_builder << m << " ";
+        }
+    }
+    str_builder << "]";
+    aux_hash_maker.update(str_builder.str());
+    return aux_hash_maker.final();
+}
+
+bool AlgorithmMinCov::hasSmallerMark(std::vector<uint32_t>* lhs_node, std::vector<uint32_t>* rhs_node)
 {
-	this->unprocessed_set = std::make_unique<std::unordered_map<std::string, std::shared_ptr<NodeState>>>();
-	this->processed_set = std::make_unique<std::vector<std::shared_ptr<NodeState>>>();
-	this->accelereted_set = std::make_unique<std::map<uint32_t, std::unique_ptr<std::vector<int32_t>>>>();
-
-	amount_places_pn = petrinet->getPlaces();
-	amount_transitions_pn = petrinet->getTransitions();
-
-	average_tokens_total = std::make_unique<std::vector<int32_t>>(amount_places_pn);
-
-	//total_tokens_preincidence = std::make_unique<std::vector<int32_t>>(amount_places_pn);
-
-	for(auto t = 0; t < amount_transitions_pn;t++){
-		auto row = petrinet->getRow(t);
-		//auto row_pre = petrinet->getRowPre(t);
-		for(auto p = 0; p < amount_places_pn;p++){
-			average_tokens_total->at(p) += row.at(p);
-			//total_tokens_preincidence->at(p) += row_pre.at(p);
-		}
-	}
-
-	auto init_mark = std::make_unique<std::vector<uint32_t>>(amount_places_pn);
-	auto init_sens = std::make_unique<std::vector<uint8_t>>(amount_transitions_pn);
-
-	std::copy(std::execution::par, petrinet->getInitialMark().begin(), petrinet->getInitialMark().end(), init_mark->begin());
-	std::copy(std::execution::par, petrinet->getCurrenSensitized().begin(), petrinet->getCurrenSensitized().end(), init_sens->begin());
-
-	this->root = std::make_shared<NodeState>(-1, std::move(init_mark), std::move(init_sens), nullptr);
-
-	processed_set->emplace_back(root);
-	generationPhase(root.get());
-	root->deactivateNode();
+    auto aux_vector = std::make_unique<std::vector<uint8_t>>(petrinet->getPlaces());
+    std::transform(std::execution::par, lhs_node->begin(), lhs_node->end(), rhs_node->begin(), aux_vector->begin(),
+                   [](uint32_t lhs_value, uint32_t rhs_value)
+                   {
+                       return lhs_value <= rhs_value;
+                   });
+    return std::all_of(aux_vector->begin(), aux_vector->end(), [](uint8_t result)
+                       { return result != 0; });
 }
-
-/*
-void AlgorithmMinCov::updateUnprocessedSet(){
-	for(auto pair_unproc : *unprocessed_set){
-		if(pair_unproc.second->isActive()){
-			generateAllChildren(pair_unproc.second);
-		}
-	}
-}
-
-void AlgorithmMinCov::generateAllChildren(std::shared_ptr<NodeState>& parent_node){
-	for (size_t t = 0; t < amount_transitions_pn; t++)
-	{
-		if(parent_node->getSensitizedAssociate()->at(t)){
-			auto new_mark = std::make_unique<std::vector<uint32_t>>(amount_places_pn);
-			auto new_sensitized = std::make_unique<std::vector<uint8_t>>(amount_transitions_pn);
-
-			MathEngine::fire(parent_node->getMarkAssociate(), petrinet->getRow(t), new_mark.get());
-
-			petrinet->setMark(new_mark.get());
-
-			std::copy(std::execution::par_unseq, petrinet->getCurrenSensitized().begin(), petrinet->getCurrenSensitized().end(), new_sensitized->begin());
-
-			auto child_node = std::make_shared<NodeState>(t,std::move(new_mark), std::move(new_sensitized), parent_node);
-
-			if (unprocessed_set->find(child_node->getNodeId()) == 0) {
-				parent_node->addChildren(child_node);
-				unprocessed_set->insert({ child_node->getNodeId(),child_node });
-			}
-		}
-	}	
-}
-
-void AlgorithmMinCov::checkAccelerationsSet(std::shared_ptr<NodeState>& current_node){
-	if(accelereted_set->count(current_node->getFire())){
-		auto omega_transition = accelereted_set->at(current_node->getFire()).get();
-		auto new_mark = std::make_unique<std::vector<uint32_t>>(amount_places_pn);
-
-		MathEngine::fireOmega(omega_transition, new_mark.get());
-
-		current_node->changeMarkAssociate(std::move(new_mark));
-
-		current_node->setAccelerated();
-	}
-}
-
-void AlgorithmMinCov::checkBiggerMark(std::shared_ptr<NodeState>& current_node){
-	for(auto node : *unprocessed_set){
-		for(auto p = 0; p < current_node->getMarkAssociate()->size();p++){
-			if(current_node->getMarkAssociate()->at(p) < node.second->getMarkAssociate()->at(p)){
-				current_node->deactivateNode();
-				return;
-			}
-		}
-	}
-}
-
-
-
-void AlgorithmMinCov::run() {
-	initSets();
-	while (!unprocessed_set->empty()) {
-		auto current_node = unprocessed_set->begin()->second;
-		if (current_node->isActive()) {
-			generateAllChildren(current_node);
-			accelerateNode(current_node);
-			if (isOmegaMark(current_node)) {
-				accelerateNode(current_node);
-				pruneNodes(current_node);
-			}
-			else {
-				current_node->deactivateNode();
-				processed_set->push_back(current_node);
-				unprocessed_set->erase(current_node->getNodeId());
-			}
-		}
-		else{
-			unprocessed_set->erase(current_node->getNodeId());
-		}
-	}
-}
-
-
-
-void AlgorithmMinCov::accelerateNode(std::shared_ptr<NodeState>& node) {
-	auto new_mark = std::make_unique<std::vector<uint32_t>>(amounPlaces);
-	for(auto acc = 0; acc < accelerator_set->size();acc++){
-		if (node->getSensitizedAssociate()->at(acc)){
-			std::vector<int32_t>* accelerated_row = accelerator_set->at(acc).get();
-			MathEngine::fire(node->getParentNode()->getMarkAssociate(),*accelerated_row,new_mark.get());
-			if((*new_mark) != (*node->getMarkAssociate())){
-				node->deactivateNode();
-				node->setAccelerated();
-				break;
-			}
-		}		
-
-	}
-}
-
-uint8_t AlgorithmMinCov::isOmegaMark(std::shared_ptr<NodeState>& node)
-{
-	if (node->getParentNode() == nullptr) {
-		return 0;
-	}
-
-	for (size_t index = 0; index < node->getMarkAssociate()->size(); index++) {
-		if ((node->getParentNode()->getMarkAssociate()->at(index) * deep) < node->getMarkAssociate()->at(index)) {
-			return true;
-		}
-	}
-	return 1;
-}
-
-void AlgorithmMinCov::pruneNodes(std::shared_ptr<NodeState>& node)
-{
-	for (auto child : node->getChildren()) {
-		child->deactivateNode();
-	}
-	node->deactivateNode();
-}
-
-void AlgorithmMinCov::updateUnprocessedSet() {
-	for (auto unprocessed_element : *unprocessed_set) {
-		if (unprocessed_element.second->isActive()) {
-			generateAllChildren(unprocessed_element.second);
-		}
-	}
-}
-
-void AlgorithmMinCov::generateAllChildren(std::shared_ptr<NodeState>& parent_node) {
-	//For every enable transition, calculate the new mark, new sensitized vector and create a new node
-	//Append the new node to the parent node
-	//If the new node it's not in the unprocessed set, it's should be add.
-	for (int32_t potential_transition = 0; potential_transition < parent_node->getSensitizedAssociate()->size(); potential_transition++) {
-		if (parent_node->getSensitizedAssociate()->at(potential_transition)) {
-			auto new_mark = std::make_unique<std::vector<uint32_t>>(amounPlaces);
-			auto new_sensitized = std::make_unique<std::vector<bool>>(amountTransitions);
-			MathEngine::fire(parent_node->getMarkAssociate(), petrinet->getRow(potential_transition), new_mark.get());
-			petrinet->setMark(new_mark.get());
-			std::copy(std::execution::par_unseq, petrinet->getCurrenSensitized().begin(), petrinet->getCurrenSensitized().end(), new_sensitized->begin());
-			auto child_node = std::make_shared<NodeState>(potential_transition,std::move(new_mark), std::move(new_sensitized), parent_node);
-			parent_node->addChildren(child_node);
-			if (unprocessed_set->find(child_node->getNodeId()) == 0) {
-				unprocessed_set->insert({ child_node->getNodeId(),child_node });
-			}
-		}
-	}
-}
-
-
-void AlgorithmMinCov::initSets()
-{
-	this->unprocessed_set 	= std::make_unique<std::unordered_map<std::string, std::shared_ptr<NodeState>>>();
-	this->processed_set 	= std::make_unique< std::vector<std::shared_ptr<NodeState>>>();
-	this->accelerator_set   = std::make_unique<std::vector<std::unique_ptr<std::vector<int32_t>>>>();
-	amounPlaces 			= petrinet->getPlaces();
-	amountTransitions 		= petrinet->getTransitions();
-	auto init_mark 			= std::make_unique< std::vector<uint32_t>>(amounPlaces);
-	auto init_sens 			= std::make_unique< std::vector<uint8_t>>(amountTransitions);
-	std::copy(std::execution::par,petrinet->getInitialMark().begin(), petrinet->getInitialMark().end(), init_mark->begin());
-	std::copy(std::execution::par,petrinet->getCurrenSensitized().begin(), petrinet->getCurrenSensitized().end(), init_sens->begin());
-	this->root 				= std::make_shared<NodeState>(-1, std::move(init_mark), std::move(init_sens), nullptr);
-	processed_set->emplace_back(root);
-}*/

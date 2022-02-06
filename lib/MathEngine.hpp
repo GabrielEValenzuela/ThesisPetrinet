@@ -21,8 +21,13 @@ namespace MathEngine{
         std::transform(std::execution::par_unseq,old_mark->begin(), old_mark->end(), column.begin(), new_mark->begin(), std::plus<>());
     }
 
-    static void fireOmega(const std::vector<int32_t>* column,std::vector<uint32_t>* new_mark){
-        std::copy_if(column->begin(),column->end(),new_mark->begin(),[](int32_t val){ return val==std::numeric_limits<uint32_t>::max();});
+    static void fireSafe(const std::vector<uint32_t>* old_mark, const std::vector<int>* column, std::vector<uint32_t>* new_mark){
+        std::transform(std::execution::par_unseq,old_mark->begin(), old_mark->end(), column->begin(), new_mark->begin(),[](uint32_t a,int b){
+        if(b==std::numeric_limits<int32_t>::max()||a==std::numeric_limits<int32_t>::max()){
+            return std::numeric_limits<int32_t>::max();
+        } else {
+            return (int)a+b;
+        }});
     }
     /*static bool fire(std::vector<uint32_t> old_mark, std::vector<int> column, std::unique_ptr<std::vector<uint32_t>>& new_mark) {
     bool isValidFire = true;

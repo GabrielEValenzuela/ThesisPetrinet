@@ -1,6 +1,7 @@
 #pragma once
 #include <mutex>
 #include <chrono>
+#include <deque>
 #include <semaphore>
 #include <thread>
 #include <random>
@@ -11,6 +12,7 @@
 #include "Agent.hpp"
 #include "Queue.hpp"
 #include "Logger.hpp"
+#include "OutputParser.hpp"
 #include "../lib/MathEngine.hpp"
 #define PROFILING_ENABLE 0
 #ifdef PROFILING_ENABLE
@@ -38,13 +40,12 @@ private:
     #endif
     std::unique_ptr<std::binary_semaphore> hodor;
     std::shared_ptr<PetriNetwork> petri_instance;
-    std::shared_ptr<Logger> logger;
+    std::deque<logger::record> logger;
     std::unique_ptr<Queue> immediate_queue;
     std::unique_ptr<Queue> temporal_queue;
     std::unique_ptr<std::unordered_map<uint32_t, std::thread::id>> temporal_filter;
     std::unique_ptr<std::vector<bool>> sensitized_and_available;
     uint64_t total_agents = { 0 };
-    //Hacer un OR con la sensibilidad
 
     /*
         For a transition, who an agent try to fire, check if another agent came before
@@ -58,14 +59,13 @@ private:
     */
     void wake_up();
 public:
-    Monitor(std::shared_ptr<PetriNetwork> petri_network);
+    explicit Monitor(std::shared_ptr<PetriNetwork> petri_network);
     bool fire_immediate(Agent* agent,uint32_t transition);
     bool fire_temporal(Agent* agent,uint32_t transition);
     uint64_t getFireCount();
     void resetFireCount();
-    void setLogger(std::shared_ptr<Logger> logger);
     void setTotalAgents(uint64_t total);
-    bool hasBlock();
     bool stillSensitized();
     void checkAndUnlock();
+    std::string generateTimestamp();
 };

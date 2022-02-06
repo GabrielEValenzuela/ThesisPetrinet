@@ -32,8 +32,11 @@
 *.app
 
 #Folder
-./build/*
-./out/*
-./tests/*
-/out/build/x64-Debug
-/.vs
+/tests/
+/cmake-build-release/
+/cmake-build-debug/
+/build/
+/.vscode/
+/out/
+/.idea
+/doc

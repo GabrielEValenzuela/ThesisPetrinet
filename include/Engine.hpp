@@ -25,6 +25,7 @@
 #include "MinuTimeLogic.hpp"
 #include "HourTimeLogic.hpp"
 #include "AlgorithmMinCov.hpp"
+#include "OutputParser.hpp"
 #include "../lib/util.hpp"
 #include "../lib/AnalysisEngine.hpp"
 #include "../lib/json.hpp"

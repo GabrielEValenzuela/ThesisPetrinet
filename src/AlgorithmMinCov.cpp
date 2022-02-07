@@ -10,6 +10,7 @@ void AlgorithmMinCov::runAlgorithm(std::shared_ptr<PetriNetwork> petri_instance)
     std::chrono::duration<double, std::micro> time = e - s;
     std::cout << "***DONE***\t Algorithm minimal coverability tree has end successfully.\n";
     std::cout << "Take " << time.count() << " us\n";
+    std::cout << "File output: mincov_out.json\n";
     std::cout << "\n\n";
     OutputParser::MinCovOut(processed_set.get(),time.count(),petrinet.get());
     exit(0);

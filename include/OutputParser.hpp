@@ -73,7 +73,7 @@ namespace OutputParser{
         o << std::setw(4) << out << std::endl;
     }
 
-    static void MonitorOut(std::deque<logger::record>* record_log,double time,PetriNetwork* instance){
+    static void MonitorOut(std::deque<logger::record>* record_log,double time,PetriNetwork* instance,uint32_t fire_count){
         auto tmp = std::make_unique<std::unordered_map<uint16_t,uint32_t>>();
         std::vector<json> history;
         while(!record_log->empty()){
@@ -104,6 +104,7 @@ namespace OutputParser{
         out["places"]       = instance->getPlaces();
         out["transitions"]  = instance->getTransitions();
         out["time"]         = time;
+        out["fire_count"]   = fire_count;
         out["min_fired"]    = min_fired;
         out["max_fired"]    = max_fired;
         out["history"]      = nlohmann::json(history);

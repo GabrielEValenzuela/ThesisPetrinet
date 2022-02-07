@@ -6,7 +6,7 @@ namespace logger{
         uint32_t transition;
         std::string type;
         std::string action;
-        std::string timestamp;
+        uint64_t timestamp;
         std::string thread_id;
     };
 };

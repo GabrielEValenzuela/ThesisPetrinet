@@ -23,7 +23,7 @@ bool Engine::validateFilename(std::string &filename)
 {
     try
     {
-        std::regex pattern("(\\w+)(\\.)(\\w+)");
+        std::regex pattern(R"((\w+)(\.)(\w+))");
         std::smatch sm_file;
         std::regex_search(filename, sm_file, pattern);
         if (!std::strcmp(sm_file.str(3).c_str(), "json"))
@@ -78,15 +78,15 @@ void Engine::runSimulation()
     {
         agent->execute();
     }
-    float progress = 0.0;
-    int previous_count = 0;
-    while (the_monitor->getFireCount() < max_fires && the_monitor->stillSensitized())
+    uint64_t previous_count = 0;
+    uint8_t amount_stall = 0;
+    while (the_monitor->getFireCount() < max_fires && the_monitor->stillSensitized() && amount_stall < 5)
     {
         previous_count = the_monitor->getFireCount();
-        std::this_thread::sleep_for(std::chrono::seconds(2));
+        std::this_thread::sleep_for(std::chrono::seconds(4));
         if (previous_count == the_monitor->getFireCount())
         {
-            break;
+            amount_stall++;
         }
     }
     for (auto &agent : pool_agent)
@@ -95,28 +95,14 @@ void Engine::runSimulation()
     }
 
     auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> time = end - start;
+    auto logger = the_monitor->getFireLog();
 
-    // Show simulation result
-    std::cout << "\n===================\n";
-    std::cout << "Simulation finished\nLoading results...\n";
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    std::cout << "Total fire count " << the_monitor->getFireCount() << "\n";
-    std::cout << "Total fire expected " << max_fires << "\n";
-    double err{static_cast<double>((the_monitor->getFireCount() - max_fires)) / max_fires};
-    std::cout << "Error " << std::setprecision(2) << err * 100 << "% \n";
-    std::cout << "Total simulation time [ms] " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "\n";
-    std::cout << "Initial mark [ ";
-    for (auto m = 0; m < instance->getInitialMark().size(); m++)
-    {
-        std::cout << instance->getInitialMark().at(m) << " ";
-    }
-    std::cout << "]\n";
-    std::cout << "Final mark [ ";
-    for (auto m = 0; m < instance->getMark()->size(); m++)
-    {
-        std::cout << instance->getMark()->at(m) << " ";
-    }
-    std::cout << "]\n";
+    OutputParser::MonitorOut(logger,time.count(),instance.get(),the_monitor->getFireCount());
+    std::cout << "***DONE***\t Simulation has end successfully.\n";
+    std::cout << "Take " << time.count() << " ms\n";
+    std::cout << "File output: monitor_out.json\n";
+    std::cout << "\n\n";
 }
 
 void Engine::petriFactory(){

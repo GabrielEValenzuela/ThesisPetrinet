@@ -1,6 +1,7 @@
 #pragma once
 #include <mutex>
 #include <chrono>
+#include <ctime>
 #include <deque>
 #include <semaphore>
 #include <thread>
@@ -12,7 +13,6 @@
 #include "Agent.hpp"
 #include "Queue.hpp"
 #include "Logger.hpp"
-#include "OutputParser.hpp"
 #include "../lib/MathEngine.hpp"
 #define PROFILING_ENABLE 0
 #ifdef PROFILING_ENABLE
@@ -46,6 +46,7 @@ private:
     std::unique_ptr<std::unordered_map<uint32_t, std::thread::id>> temporal_filter;
     std::unique_ptr<std::vector<bool>> sensitized_and_available;
     uint64_t total_agents = { 0 };
+    std::chrono::time_point<std::chrono::system_clock> start;
 
     /*
         For a transition, who an agent try to fire, check if another agent came before
@@ -67,5 +68,6 @@ public:
     void setTotalAgents(uint64_t total);
     bool stillSensitized();
     void checkAndUnlock();
-    std::string generateTimestamp();
+    uint64_t generateTimestamp();
+    std::deque<logger::record>* getFireLog();
 };

@@ -10,7 +10,7 @@
 #include "TemporalMilliAgent.hpp"
 #include "TemporalMicroAgent.hpp"
 #include "TemporalNanoAgent.hpp"
-#include "../lib/util.hpp"
+#include "../lib/entityPN.hpp"
 
 /*
     Factory Method is a creational design pattern that provides an interface for creating objects in a superclass,
@@ -27,5 +27,8 @@ private:
 public:
     AgentFactory() = default;
     AgentFactory(std::shared_ptr<Monitor> monitor, std::shared_ptr<PetriNetwork> petrinet);
-    std::unique_ptr<Agent> getAgent(Timescale_Choice::unit scale, Agent_Choice::type type, std::unique_ptr<std::vector<uint32_t>> vector, uint32_t first_parameter = 0, uint32_t second_parameter = 0);
+    std::unique_ptr<Agent> getAgent(Timescale_Choice::unit scale, Agent_Choice::type type,
+                                    std::unique_ptr<std::vector<uint32_t>> vector,
+                                    uint32_t first_parameter = 0,
+                                    uint32_t second_parameter = 0);
 };

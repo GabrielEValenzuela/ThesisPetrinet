@@ -1,7 +1,7 @@
 #pragma once
 #include "../lib/pugixml.hpp"
 #include "../lib/PetriMatrix.hpp"
-#include "../lib/util.hpp"
+#include "../lib/entityPN.hpp"
 #include "ReadFile.hpp"
 #include <fstream>
 
@@ -17,7 +17,6 @@ public:
     void readArcsInhibitor(PetriMatrix<uint8_t>* inhibitor_matrix) override;
     void readArcsReader(PetriMatrix<uint8_t>* reader_matrix) override;
     void readArcsReset(std::vector<uint8_t>* reset_vector) override;
-    bool isTemporal();
     Timescale_Choice::unit getTimeScale();
     Network_Choice::type getNetworkType();
     uint32_t getNumberPlaces() override;

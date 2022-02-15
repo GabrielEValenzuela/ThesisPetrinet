@@ -14,8 +14,9 @@
 */
 class AgentImmediate : public Agent{
 public:
-    ~AgentImmediate();
+    //~AgentImmediate();
     void execute() override;
+    void executeWL() override;
     void resume() override;
     void suspend() override;
     void stop() override;

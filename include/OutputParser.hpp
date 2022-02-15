@@ -40,10 +40,10 @@ namespace OutputParser{
                 for (const auto& child : *pair_node.second->getChildren()) {
                     nlohmann::json chnode;
                     nlohmann::json chedge;
-                    chedge["from"]  = "n" + std::to_string(pair_node.second->getNodeId());;
+                    chedge["from"]  = "n" + std::to_string(pair_node.second->getNodeId());
                     chedge["to"]    = "n" + std::to_string(child->getNodeId());
                     chedge["path"]  = chedge["from"].get<std::string>() + " --(T" + std::to_string((1 + child->getFire())) + ")--> " + chedge["to"].get<std::string>();
-                    chnode["id"]    = "n" + std::to_string(child->getNodeId());;
+                    chnode["id"]    = "n" + std::to_string(child->getNodeId());
                     chnode["state"] = child->getInfo();
                     if (child->isAccelerated()) {
                         chnode["group"] = "omega";
@@ -63,12 +63,12 @@ namespace OutputParser{
                     edges.emplace_back(chedge);
                 }
                 nodes.emplace_back(pnode);
-                filter_node.insert(pair_node.second->getInfo());;
+                filter_node.insert(pair_node.second->getInfo());
             }
         }
         out["nodes"] = nlohmann::json(nodes);
         out["edges"] = nlohmann::json(edges);
-        std::string file_name{"mincov_out.json"};
+        std::string file_name{instance->getName()+"_mincov.json"};
         std::ofstream o(file_name);
         o << std::setw(4) << out << std::endl;
     }
@@ -108,7 +108,7 @@ namespace OutputParser{
         out["min_fired"]    = min_fired;
         out["max_fired"]    = max_fired;
         out["history"]      = nlohmann::json(history);
-        std::string file_name{"monitor_out.json"};
+        std::string file_name{instance->getName()+"_monitor.json"};
         std::ofstream o(file_name);
         o << std::setw(4) << out << std::endl;
     }

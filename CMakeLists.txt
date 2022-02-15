@@ -32,3 +32,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${CMAKE_DL_LIBS})
 message("Profiling done. You should start tracy sever now")
 endif()
 target_link_libraries(${PROJECT_NAME} PUBLIC tbb)
+set(CMAKE_CXX_CLANG_TIDY 
+  "clang-tidy;
+  -header-filter=.;
+  -checks=*;")

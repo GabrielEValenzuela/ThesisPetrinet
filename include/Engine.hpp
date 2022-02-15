@@ -26,7 +26,7 @@
 #include "HourTimeLogic.hpp"
 #include "AlgorithmMinCov.hpp"
 #include "OutputParser.hpp"
-#include "../lib/util.hpp"
+#include "../lib/entityPN.hpp"
 #include "../lib/AnalysisEngine.hpp"
 #include "../lib/json.hpp"
 
@@ -49,11 +49,17 @@ class Engine{
         AgentFactory factory;
         bool json_pnml{true};
         void simulationFactory();
+        void loadConfiguration();
         void petriFactory();
         void configureTimeScale();
         bool validateFilename(std::string& filename);
         void runSimulation();
         void runAlgorithm();
+        uint64_t current_firecount{0};
+        uint64_t fire_count_sim{0};
+        double simulation_time{0};
+        double logger_time{0};
+        void runSimulationLogger();
     public:
         void run(std::string&& filename,uint8_t operation);
 };

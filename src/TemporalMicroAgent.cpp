@@ -40,7 +40,7 @@ void TemporalMicroAgent::execute() {
             if (idx_transition == total_fire) {
                 idx_transition = 0;
             }
-            if (monitor->fire_temporal(this, fire_sequence->at(idx_transition))) {
+            if (monitor->fireTemporal(this, fire_sequence->at(idx_transition))) {
                 idx_transition++;
             }
             else {
@@ -56,7 +56,7 @@ void TemporalMicroAgent::execute() {
 }
 
 const std::thread::id TemporalMicroAgent::getId() {
-    return std::this_thread::get_id();
+    return worker.get_id();
 }
 
 std::string TemporalMicroAgent::getStrId()
@@ -64,4 +64,27 @@ std::string TemporalMicroAgent::getStrId()
     std::ostringstream ss;
     ss << std::this_thread::get_id();
     return ss.str();
+}
+
+void TemporalMicroAgent::executeWL() {
+    worker = std::jthread([&]() {
+        const size_t total_fire = fire_sequence->size();
+        size_t idx_transition = 0;
+        while (!source.get_token().stop_requested()) {
+            if (idx_transition == total_fire) {
+                idx_transition = 0;
+            }
+            if (monitor->fireTemporalWL(this, fire_sequence->at(idx_transition))) {
+                idx_transition++;
+            }
+            else {
+                if (sleep_guard.load()) {
+                    std::this_thread::sleep_for(std::chrono::hours(sleep_time));
+                }
+                else {
+                    controller.acquire();
+                }
+            }
+        }
+    });
 }

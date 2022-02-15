@@ -117,7 +117,7 @@ void PlaceTransitionNet::auxStepSensitized(PetriMatrix<int32_t>* pre_incidence, 
 void PlaceTransitionNet::auxStepLVector(std::vector<uint8_t>* l_vec)
 {
     r_vector = std::make_unique<std::vector<uint8_t>>(file->getNumberPlaces());
-    std::transform(initial_mark->begin(), initial_mark->end(), r_vector->begin(), [](uint32_t mark) {return !(mark > 0); });
+    std::transform(initial_mark->begin(), initial_mark->end(), r_vector->begin(), [](uint32_t mark) {return mark <= 0; });
     for (auto transition = 0; transition < file->getNumberTransitions(); transition++) {
         std::transform(r_vector->begin(), r_vector->end(), reader_matrix->getRow(transition).begin(), aux_vec->begin(), std::logical_and<>());
         l_vec->at(transition) = std::any_of(aux_vec->begin(), aux_vec->end(), [](uint8_t b) {return b; });

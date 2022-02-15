@@ -14,6 +14,7 @@
 #include "Queue.hpp"
 #include "Logger.hpp"
 #include "../lib/MathEngine.hpp"
+#include "../lib/date.h"
 #define PROFILING_ENABLE 0
 #ifdef PROFILING_ENABLE
 #include "../lib/tracy/Tracy.hpp"
@@ -48,21 +49,21 @@ private:
     uint64_t total_agents = { 0 };
     std::chrono::time_point<std::chrono::system_clock> start;
 
-    /*
-        For a transition, who an agent try to fire, check if another agent came before
-        @param transition number
-        @param agent pointer
-    */
+    //For a transition, who an agent try to fire, check if another agent came before
     bool isAnotherFirst(uint32_t transition,Agent* agent) const;
-
-    /*
-        Pop one agent from a queue and resume his task based on a particular policy
-    */
-    void wake_up();
+    //Pop one agent from a queue and resume his task based on a particular policy
+    void wakeUp();
+    //Seme above but with logger
+    void wakeUpWL();
 public:
     explicit Monitor(std::shared_ptr<PetriNetwork> petri_network);
-    bool fire_immediate(Agent* agent,uint32_t transition);
-    bool fire_temporal(Agent* agent,uint32_t transition);
+    bool fireImmediate(Agent* agent, uint32_t transition);
+    //Seme above but with logger
+    bool fireImmediateWL(Agent* agent, uint32_t transition);
+
+    bool fireTemporal(Agent* agent, uint32_t transition);
+    //Seme above but with logger
+    bool fireTemporalWL(Agent* agent,uint32_t transition);
     uint64_t getFireCount();
     void resetFireCount();
     void setTotalAgents(uint64_t total);

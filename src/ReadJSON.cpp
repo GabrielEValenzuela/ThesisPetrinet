@@ -1,6 +1,5 @@
 #include <cstdint>
 #include "../include/ReadJSON.hpp"
-#include "../lib/util.hpp"
 
 int8_t ReadJSON::readFile(std::string &file_name){
     std::cout << "Name " << file_name << "\n";

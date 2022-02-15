@@ -29,12 +29,4 @@ namespace MathEngine{
             return (int)a+b;
         }});
     }
-    /*static bool fire(std::vector<uint32_t> old_mark, std::vector<int> column, std::unique_ptr<std::vector<uint32_t>>& new_mark) {
-    bool isValidFire = true;
-        for(auto p = 0; p < old_mark.size();++p){
-            new_mark->at(p) = old_mark.at(p) + column.at(p);
-            isValidFire &= (old_mark.at(p) + column.at(p) >= 0);
-        }
-    return isValidFire;
-    }*/
-};
+}

@@ -18,10 +18,8 @@ void TemporalMilliAgent::setMonitor(std::shared_ptr<Monitor> monitor) {
     this->monitor = monitor;
 }
 
-void TemporalMilliAgent::stop()
-{
-    if (suspend_guard.load())
-    {
+void TemporalMilliAgent::stop() {
+    if (suspend_guard.load()) {
         suspend_guard.store(false);
         controller.release();
     }
@@ -40,29 +38,49 @@ void TemporalMilliAgent::execute() {
             if (idx_transition == total_fire) {
                 idx_transition = 0;
             }
-            if (monitor->fire_temporal(this, fire_sequence->at(idx_transition))) {
+            if (monitor->fireTemporal(this, fire_sequence->at(idx_transition))) {
+                idx_transition++;
+            } else {
+                if (sleep_guard.load()) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
+                    sleep_guard.store(false);
+                } else {
+                    controller.acquire();
+                }
+            }
+        }
+    });
+}
+
+const std::thread::id TemporalMilliAgent::getId() {
+    return worker.get_id();
+}
+
+std::string TemporalMilliAgent::getStrId() {
+    std::ostringstream ss;
+    ss << std::this_thread::get_id();
+    return ss.str();
+}
+
+void TemporalMilliAgent::executeWL() {
+    worker = std::jthread([&]() {
+        const size_t total_fire = fire_sequence->size();
+        size_t idx_transition = 0;
+        while (!source.get_token().stop_requested()) {
+            if (idx_transition == total_fire) {
+                idx_transition = 0;
+            }
+            if (monitor->fireTemporalWL(this, fire_sequence->at(idx_transition))) {
                 idx_transition++;
             }
             else {
                 if (sleep_guard.load()) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
-                    sleep_guard.store(false);
+                    std::this_thread::sleep_for(std::chrono::hours(sleep_time));
                 }
                 else {
                     controller.acquire();
                 }
             }
         }
-        });
-}
-
-const std::thread::id TemporalMilliAgent::getId() {
-    return std::this_thread::get_id();
-}
-
-std::string TemporalMilliAgent::getStrId()
-{
-    std::ostringstream ss;
-    ss << std::this_thread::get_id();
-    return ss.str();
+    });
 }

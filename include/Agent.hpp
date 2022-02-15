@@ -16,9 +16,19 @@ class Monitor; //Class forwarding
 class Agent {
 public:
     /*
+    * Avoid non virtual destructor warning
+    */
+
+    //virtual ~Agent() = default;
+
+    /*
     * Run the fire sequence
     */
     virtual void execute() = 0;
+    /*
+    * Run the fire sequence and record the actions
+    */
+    virtual void executeWL() = 0;
     /*
     * Relese the guard semaphore and restart the agent's execution
     */

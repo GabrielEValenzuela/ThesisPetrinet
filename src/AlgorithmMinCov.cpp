@@ -21,7 +21,6 @@ void AlgorithmMinCov::runMinCov()
     // Setup all containers
     unprocessed_set = std::make_unique<std::deque<PotentialNode_t>>();
     processed_set = std::make_unique<std::unordered_map<std::string, std::shared_ptr<NodeState>>>();
-    accelereted_set = std::make_unique<std::vector<std::shared_ptr<OmegaTransition>>>();
     transitions = std::make_unique<std::vector<std::shared_ptr<OmegaTransition>>>();
     filter_set = std::make_unique<std::unordered_set<std::string>>();
 

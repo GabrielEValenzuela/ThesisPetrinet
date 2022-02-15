@@ -4,7 +4,7 @@ AgentFactory::AgentFactory(std::shared_ptr<Monitor> monitor, std::shared_ptr<Pet
 {
     this->monitor = monitor;
     this->petrinetwork = petrinet;
-};
+}
 
 std::unique_ptr<Agent> AgentFactory::getAgent(Timescale_Choice::unit scale, Agent_Choice::type type,std::unique_ptr<std::vector<uint32_t>> vector,uint32_t first_parameter,uint32_t second_parameter) {
     switch (type) {

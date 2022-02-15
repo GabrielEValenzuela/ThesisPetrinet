@@ -263,7 +263,7 @@ namespace args
     {
         public:
             Error(const std::string &problem) : std::runtime_error(problem) {}
-            virtual ~Error() {}
+            ~Error() override {}
     };
 
     /** Errors that occur during usage
@@ -272,7 +272,7 @@ namespace args
     {
         public:
             UsageError(const std::string &problem) : Error(problem) {}
-            virtual ~UsageError() {}
+            ~UsageError() override {}
     };
 
     /** Errors that occur during regular parsing
@@ -281,7 +281,7 @@ namespace args
     {
         public:
             ParseError(const std::string &problem) : Error(problem) {}
-            virtual ~ParseError() {}
+            ~ParseError() override {}
     };
 
     /** Errors that are detected from group validation after parsing finishes
@@ -290,7 +290,7 @@ namespace args
     {
         public:
             ValidationError(const std::string &problem) : Error(problem) {}
-            virtual ~ValidationError() {}
+            ~ValidationError() override {}
     };
 
     /** Errors that when a required flag is omitted
@@ -299,7 +299,7 @@ namespace args
     {
         public:
             RequiredError(const std::string &problem) : ValidationError(problem) {}
-            virtual ~RequiredError() {}
+            ~RequiredError() override {}
     };
 
     /** Errors in map lookups
@@ -308,7 +308,7 @@ namespace args
     {
         public:
             MapError(const std::string &problem) : ParseError(problem) {}
-            virtual ~MapError() {}
+            ~MapError() override {}
     };
 
     /** Error that occurs when a singular flag is specified multiple times
@@ -317,7 +317,7 @@ namespace args
     {
         public:
             ExtraError(const std::string &problem) : ParseError(problem) {}
-            virtual ~ExtraError() {}
+            ~ExtraError() override {}
     };
 
     /** An exception that indicates that the user has requested help
@@ -326,7 +326,7 @@ namespace args
     {
         public:
             Help(const std::string &flag) : Error(flag) {}
-            virtual ~Help() {}
+            ~Help() override {}
     };
 
     /** (INTERNAL) An exception that emulates coroutine-like control flow for subparsers.
@@ -335,7 +335,7 @@ namespace args
     {
         public:
             SubparserError() : Error("") {}
-            virtual ~SubparserError() {}
+            ~SubparserError() override {}
     };
 
     /** An exception that contains autocompletion reply
@@ -344,7 +344,7 @@ namespace args
     {
         public:
             Completion(const std::string &flag) : Error(flag) {}
-            virtual ~Completion() {}
+            ~Completion() override {}
     };
 #endif
 
@@ -963,7 +963,7 @@ namespace args
 
         public:
             NamedBase(const std::string &name_, const std::string &help_, Options options_ = {}) : Base(help_, options_), name(name_) {}
-            virtual ~NamedBase() {}
+            ~NamedBase() override {}
 
             /** Sets default value string that will be added to argument description.
              *  Use empty string to disable it for this argument.
@@ -997,7 +997,7 @@ namespace args
                 return choicesStringManual ? choicesStrings : GetChoicesStrings(params);
             }
 
-            virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams &params, const unsigned indentLevel) const override
+            std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams &params, const unsigned indentLevel) const override
             {
                 std::tuple<std::string, std::string, unsigned> description;
                 std::get<0>(description) = GetNameString(params);
@@ -1083,7 +1083,7 @@ namespace args
         protected:
             const Matcher matcher;
 
-            virtual std::string GetNameString(const HelpParams &params) const override
+            std::string GetNameString(const HelpParams &params) const override
             {
                 const std::string postfix = !params.showValueName || NumberOfArguments() == 0 ? std::string() : Name();
                 std::string flags;
@@ -1115,9 +1115,9 @@ namespace args
 
             FlagBase(const std::string &name_, const std::string &help_, Matcher &&matcher_, Options options_) : NamedBase(name_, help_, options_), matcher(std::move(matcher_)) {}
 
-            virtual ~FlagBase() {}
+            ~FlagBase() override {}
 
-            virtual FlagBase *Match(const EitherFlag &flag) override
+            FlagBase *Match(const EitherFlag &flag) override
             {
                 if (matcher.Match(flag))
                 {
@@ -1138,7 +1138,7 @@ namespace args
                 return nullptr;
             }
 
-            virtual std::vector<FlagBase*> GetAllFlags() override
+            std::vector<FlagBase*> GetAllFlags() override
             {
                 return { this };
             }
@@ -1148,7 +1148,7 @@ namespace args
                 return matcher;
             }
 
-            virtual void Validate(const std::string &shortPrefix, const std::string &longPrefix) const override
+            void Validate(const std::string &shortPrefix, const std::string &longPrefix) const override
             {
                 if (!Matched() && IsRequired())
                 {
@@ -1163,7 +1163,7 @@ namespace args
                 }
             }
 
-            virtual std::vector<std::string> GetProgramLine(const HelpParams &params) const override
+            std::vector<std::string> GetProgramLine(const HelpParams &params) const override
             {
                 if (!params.proglineShowFlags)
                 {
@@ -1182,7 +1182,7 @@ namespace args
                                       : params.proglineNonrequiredOpen + res + params.proglineNonrequiredClose };
             }
 
-            virtual bool HasFlag() const override
+            bool HasFlag() const override
             {
                 return true;
             }
@@ -1227,9 +1227,9 @@ namespace args
         public:
             ValueFlagBase(const std::string &name_, const std::string &help_, Matcher &&matcher_, const bool extraError_ = false) : FlagBase(name_, help_, std::move(matcher_), extraError_) {}
             ValueFlagBase(const std::string &name_, const std::string &help_, Matcher &&matcher_, Options options_) : FlagBase(name_, help_, std::move(matcher_), options_) {}
-            virtual ~ValueFlagBase() {}
+            ~ValueFlagBase() override {}
 
-            virtual Nargs NumberOfArguments() const noexcept override
+            Nargs NumberOfArguments() const noexcept override
             {
                 return 1;
             }
@@ -1248,14 +1248,14 @@ namespace args
                 group_.AddCompletion(*this);
             }
 
-            virtual ~CompletionFlag() {}
+            ~CompletionFlag() override {}
 
-            virtual Nargs NumberOfArguments() const noexcept override
+            Nargs NumberOfArguments() const noexcept override
             {
                 return 2;
             }
 
-            virtual void ParseValue(const std::vector<std::string> &value_) override
+            void ParseValue(const std::vector<std::string> &value_) override
             {
                 syntax = value_.at(0);
                 std::istringstream(value_.at(1)) >> cword;
@@ -1268,7 +1268,7 @@ namespace args
                 return detail::Join(reply, "\n");
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 ValueFlagBase::Reset();
                 cword = 0;
@@ -1287,7 +1287,7 @@ namespace args
 
         public:
             PositionalBase(const std::string &name_, const std::string &help_, Options options_ = {}) : NamedBase(name_, help_, options_), ready(true) {}
-            virtual ~PositionalBase() {}
+            ~PositionalBase() override {}
 
             bool Ready()
             {
@@ -1296,7 +1296,7 @@ namespace args
 
             virtual void ParseValue(const std::string &value_) = 0;
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 matched = false;
                 ready = true;
@@ -1306,23 +1306,23 @@ namespace args
 #endif
             }
 
-            virtual PositionalBase *GetNextPositional() override
+            PositionalBase *GetNextPositional() override
             {
                 return Ready() ? this : nullptr;
             }
 
-            virtual bool HasPositional() const override
+            bool HasPositional() const override
             {
                 return true;
             }
 
-            virtual std::vector<std::string> GetProgramLine(const HelpParams &params) const override
+            std::vector<std::string> GetProgramLine(const HelpParams &params) const override
             {
                 return { IsRequired() ? params.proglineRequiredOpen + Name() + params.proglineRequiredClose
                                       : params.proglineNonrequiredOpen + Name() + params.proglineNonrequiredClose };
             }
 
-            virtual void Validate(const std::string &, const std::string &) const override
+            void Validate(const std::string &, const std::string &) const override
             {
                 if (IsRequired() && !Matched())
                 {
@@ -1405,7 +1405,7 @@ namespace args
             {
                 group_.Add(*this);
             }
-            virtual ~Group() {}
+            ~Group() override {}
 
             /** Append a child to this Group.
              */
@@ -1426,7 +1426,7 @@ namespace args
              * \param flag The flag with prefixes stripped
              * \return the first matching FlagBase pointer, or nullptr if there is no match
              */
-            virtual FlagBase *Match(const EitherFlag &flag) override
+            FlagBase *Match(const EitherFlag &flag) override
             {
                 for (Base *child: Children())
                 {
@@ -1438,7 +1438,7 @@ namespace args
                 return nullptr;
             }
 
-            virtual std::vector<FlagBase*> GetAllFlags() override
+            std::vector<FlagBase*> GetAllFlags() override
             {
                 std::vector<FlagBase*> res;
                 for (Base *child: Children())
@@ -1449,7 +1449,7 @@ namespace args
                 return res;
             }
 
-            virtual void Validate(const std::string &shortPrefix, const std::string &longPrefix) const override
+            void Validate(const std::string &shortPrefix, const std::string &longPrefix) const override
             {
                 for (Base *child: Children())
                 {
@@ -1461,7 +1461,7 @@ namespace args
              *
              * \return the first ready PositionalBase pointer, or nullptr if there is no match
              */
-            virtual PositionalBase *GetNextPositional() override
+            PositionalBase *GetNextPositional() override
             {
                 for (Base *child: Children())
                 {
@@ -1477,7 +1477,7 @@ namespace args
              *
              * \return Whether or not there are any FlagBase children
              */
-            virtual bool HasFlag() const override
+            bool HasFlag() const override
             {
                 return std::any_of(Children().begin(), Children().end(), [](Base *child) { return child->HasFlag(); });
             }
@@ -1486,7 +1486,7 @@ namespace args
              *
              * \return Whether or not there are any PositionalBase children
              */
-            virtual bool HasPositional() const override
+            bool HasPositional() const override
             {
                 return std::any_of(Children().begin(), Children().end(), [](Base *child) { return child->HasPositional(); });
             }
@@ -1495,7 +1495,7 @@ namespace args
              *
              * \return Whether or not there are any Command children
              */
-            virtual bool HasCommand() const override
+            bool HasCommand() const override
             {
                 return std::any_of(Children().begin(), Children().end(), [](Base *child) { return child->HasCommand(); });
             }
@@ -1511,7 +1511,7 @@ namespace args
 
             /** Whether or not this group matches validation
              */
-            virtual bool Matched() const noexcept override
+            bool Matched() const noexcept override
             {
                 return validator(*this);
             }
@@ -1525,7 +1525,7 @@ namespace args
 
             /** Get all the child descriptions for help generation
              */
-            virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams &params, const unsigned int indent) const override
+            std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams &params, const unsigned int indent) const override
             {
                 std::vector<std::tuple<std::string, std::string, unsigned int>> descriptions;
 
@@ -1555,7 +1555,7 @@ namespace args
 
             /** Get the names of positional parameters
              */
-            virtual std::vector<std::string> GetProgramLine(const HelpParams &params) const override
+            std::vector<std::string> GetProgramLine(const HelpParams &params) const override
             {
                 std::vector <std::string> names;
                 for (Base *child: Children())
@@ -1574,7 +1574,7 @@ namespace args
                 return names;
             }
 
-            virtual std::vector<Command*> GetCommands() override
+            std::vector<Command*> GetCommands() override
             {
                 std::vector<Command*> res;
                 for (const auto &child : Children())
@@ -1585,12 +1585,12 @@ namespace args
                 return res;
             }
 
-            virtual bool IsGroup() const override
+            bool IsGroup() const override
             {
                 return true;
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 Base::Reset();
 
@@ -1860,10 +1860,10 @@ namespace args
             void RequireCommand(bool value)
             { commandIsRequired = value; }
 
-            virtual bool IsGroup() const override
+            bool IsGroup() const override
             { return false; }
 
-            virtual bool Matched() const noexcept override
+            bool Matched() const noexcept override
             { return Base::Matched(); }
 
             operator bool() const noexcept
@@ -1882,7 +1882,7 @@ namespace args
                 }
             }
 
-            virtual FlagBase *Match(const EitherFlag &flag) override
+            FlagBase *Match(const EitherFlag &flag) override
             {
                 if (selectedCommand != nullptr)
                 {
@@ -1913,7 +1913,7 @@ namespace args
                 return Matched() ? Group::Match(flag) : nullptr;
             }
 
-            virtual std::vector<FlagBase*> GetAllFlags() override
+            std::vector<FlagBase*> GetAllFlags() override
             {
                 std::vector<FlagBase*> res;
 
@@ -1946,7 +1946,7 @@ namespace args
                 return res;
             }
 
-            virtual PositionalBase *GetNextPositional() override
+            PositionalBase *GetNextPositional() override
             {
                 if (selectedCommand != nullptr)
                 {
@@ -1977,17 +1977,17 @@ namespace args
                 return Matched() ? Group::GetNextPositional() : nullptr;
             }
 
-            virtual bool HasFlag() const override
+            bool HasFlag() const override
             {
                 return subparserHasFlag || Group::HasFlag();
             }
 
-            virtual bool HasPositional() const override
+            bool HasPositional() const override
             {
                 return subparserHasPositional || Group::HasPositional();
             }
 
-            virtual bool HasCommand() const override
+            bool HasCommand() const override
             {
                 return true;
             }
@@ -2047,7 +2047,7 @@ namespace args
                 return res;
             }
 
-            virtual std::vector<std::string> GetProgramLine(const HelpParams &params) const override
+            std::vector<std::string> GetProgramLine(const HelpParams &params) const override
             {
                 if (!Matched())
                 {
@@ -2057,7 +2057,7 @@ namespace args
                 return GetCommandProgramLine(params);
             }
 
-            virtual std::vector<Command*> GetCommands() override
+            std::vector<Command*> GetCommands() override
             {
                 if (selectedCommand != nullptr)
                 {
@@ -2072,7 +2072,7 @@ namespace args
                 return { this };
             }
 
-            virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams &params, const unsigned int indent) const override
+            std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams &params, const unsigned int indent) const override
             {
                 std::vector<std::tuple<std::string, std::string, unsigned>> descriptions;
                 unsigned addindent = 0;
@@ -2154,7 +2154,7 @@ namespace args
                 return descriptions;
             }
 
-            virtual void Validate(const std::string &shortprefix, const std::string &longprefix) const override
+            void Validate(const std::string &shortprefix, const std::string &longprefix) const override
             {
                 if (!Matched())
                 {
@@ -2205,7 +2205,7 @@ namespace args
                 }
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 Group::Reset();
                 selectedCommand = nullptr;
@@ -3042,7 +3042,7 @@ namespace args
                 return help_.str();
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 Command::Reset();
                 matched = true;
@@ -3163,7 +3163,7 @@ namespace args
             {
             }
 
-            virtual ~Flag() {}
+            ~Flag() override {}
 
             /** Get whether this was matched
              */
@@ -3172,12 +3172,12 @@ namespace args
                 return Matched();
             }
 
-            virtual Nargs NumberOfArguments() const noexcept override
+            Nargs NumberOfArguments() const noexcept override
             {
                 return 0;
             }
 
-            virtual void ParseValue(const std::vector<std::string>&) override
+            void ParseValue(const std::vector<std::string>&) override
             {
             }
     };
@@ -3191,9 +3191,9 @@ namespace args
         public:
             HelpFlag(Group &group_, const std::string &name_, const std::string &help_, Matcher &&matcher_, Options options_ = {}): Flag(group_, name_, help_, std::move(matcher_), options_) {}
 
-            virtual ~HelpFlag() {}
+            ~HelpFlag() override {}
 
-            virtual void ParseValue(const std::vector<std::string> &)
+            void ParseValue(const std::vector<std::string> &) override
             {
 #ifdef ARGS_NOEXCEPT
                     error = Error::Help;
@@ -3223,9 +3223,9 @@ namespace args
             CounterFlag(Group &group_, const std::string &name_, const std::string &help_, Matcher &&matcher_, const int startcount_ = 0, Options options_ = {}):
                 Flag(group_, name_, help_, std::move(matcher_), options_), startcount(startcount_), count(startcount_) {}
 
-            virtual ~CounterFlag() {}
+            ~CounterFlag() override {}
 
-            virtual FlagBase *Match(const EitherFlag &arg) override
+            FlagBase *Match(const EitherFlag &arg) override
             {
                 auto me = FlagBase::Match(arg);
                 if (me)
@@ -3250,7 +3250,7 @@ namespace args
                 return count;
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 FlagBase::Reset();
                 count = startcount;
@@ -3286,10 +3286,10 @@ namespace args
                 action = [action_](const std::vector<std::string> &) { return action_(); };
             }
 
-            virtual Nargs NumberOfArguments() const noexcept override
+            Nargs NumberOfArguments() const noexcept override
             { return nargs; }
 
-            virtual void ParseValue(const std::vector<std::string> &value) override
+            void ParseValue(const std::vector<std::string> &value) override
             { action(value); }
     };
 
@@ -3350,7 +3350,7 @@ namespace args
             T value;
             T defaultValue;
 
-            virtual std::string GetDefaultString(const HelpParams&) const override
+            std::string GetDefaultString(const HelpParams&) const override
             {
                 return detail::ToString(defaultValue);
             }
@@ -3373,9 +3373,9 @@ namespace args
             {
             }
 
-            virtual ~ValueFlag() {}
+            ~ValueFlag() override {}
 
-            virtual void ParseValue(const std::vector<std::string> &values_) override
+            void ParseValue(const std::vector<std::string> &values_) override
             {
                 const std::string &value_ = values_.at(0);
 
@@ -3389,7 +3389,7 @@ namespace args
 #endif
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 ValueFlagBase::Reset();
                 value = defaultValue;
@@ -3470,12 +3470,12 @@ namespace args
 
             virtual ~ImplicitValueFlag() {}
 
-            virtual Nargs NumberOfArguments() const noexcept override
+            Nargs NumberOfArguments() const noexcept override
             {
                 return {0, 1};
             }
 
-            virtual void ParseValue(const std::vector<std::string> &value_) override
+            void ParseValue(const std::vector<std::string> &value_) override
             {
                 if (value_.empty())
                 {
@@ -3528,14 +3528,14 @@ namespace args
                 group_.Add(*this);
             }
 
-            virtual ~NargsValueFlag() {}
+            ~NargsValueFlag() override {}
 
-            virtual Nargs NumberOfArguments() const noexcept override
+            Nargs NumberOfArguments() const noexcept override
             {
                 return nargs;
             }
 
-            virtual void ParseValue(const std::vector<std::string> &values_) override
+            void ParseValue(const std::vector<std::string> &values_) override
             {
                 values.clear();
 
@@ -3617,13 +3617,13 @@ namespace args
                 return values.cend();
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 FlagBase::Reset();
                 values = defaultValues;
             }
 
-            virtual FlagBase *Match(const EitherFlag &arg) override
+            FlagBase *Match(const EitherFlag &arg) override
             {
                 const bool wasMatched = Matched();
                 auto me = FlagBase::Match(arg);
@@ -3674,9 +3674,9 @@ namespace args
                 group_.Add(*this);
             }
 
-            virtual ~ValueFlagList() {}
+            ~ValueFlagList() override {}
 
-            virtual void ParseValue(const std::vector<std::string> &values_) override
+            void ParseValue(const std::vector<std::string> &values_) override
             {
                 const std::string &value_ = values_.at(0);
 
@@ -3727,18 +3727,18 @@ namespace args
                 return &values;
             }
 
-            virtual std::string Name() const override
+            std::string Name() const override
             {
                 return name + std::string("...");
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 ValueFlagBase::Reset();
                 values = defaultValues;
             }
 
-            virtual FlagBase *Match(const EitherFlag &arg) override
+            FlagBase *Match(const EitherFlag &arg) override
             {
                 const bool wasMatched = Matched();
                 auto me = FlagBase::Match(arg);
@@ -3801,7 +3801,7 @@ namespace args
             Reader reader;
 
         protected:
-            virtual std::vector<std::string> GetChoicesStrings(const HelpParams &) const override
+            std::vector<std::string> GetChoicesStrings(const HelpParams &) const override
             {
                 return detail::MapKeysToStrings(map);
             }
@@ -3821,9 +3821,9 @@ namespace args
             {
             }
 
-            virtual ~MapFlag() {}
+            ~MapFlag() override {}
 
-            virtual void ParseValue(const std::vector<std::string> &values_) override
+            void ParseValue(const std::vector<std::string> &values_) override
             {
                 const std::string &value_ = values_.at(0);
 
@@ -3888,7 +3888,7 @@ namespace args
                 return &value;
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 ValueFlagBase::Reset();
                 value = defaultValue;
@@ -3919,7 +3919,7 @@ namespace args
             Reader reader;
 
         protected:
-            virtual std::vector<std::string> GetChoicesStrings(const HelpParams &) const override
+            std::vector<std::string> GetChoicesStrings(const HelpParams &) const override
             {
                 return detail::MapKeysToStrings(map);
             }
@@ -3943,9 +3943,9 @@ namespace args
                 group_.Add(*this);
             }
 
-            virtual ~MapFlagList() {}
+            ~MapFlagList() override {}
 
-            virtual void ParseValue(const std::vector<std::string> &values_) override
+            void ParseValue(const std::vector<std::string> &values_) override
             {
                 const std::string &value = values_.at(0);
 
@@ -4010,18 +4010,18 @@ namespace args
                 return &values;
             }
 
-            virtual std::string Name() const override
+            std::string Name() const override
             {
                 return name + std::string("...");
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 ValueFlagBase::Reset();
                 values = defaultValues;
             }
 
-            virtual FlagBase *Match(const EitherFlag &arg) override
+            FlagBase *Match(const EitherFlag &arg) override
             {
                 const bool wasMatched = Matched();
                 auto me = FlagBase::Match(arg);
@@ -4087,9 +4087,9 @@ namespace args
             {
             }
 
-            virtual ~Positional() {}
+            ~Positional() override {}
 
-            virtual void ParseValue(const std::string &value_) override
+            void ParseValue(const std::string &value_) override
             {
 #ifdef ARGS_NOEXCEPT
                 if (!reader(name, value_, this->value))
@@ -4138,7 +4138,7 @@ namespace args
                 return &value;
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 PositionalBase::Reset();
                 value = defaultValue;
@@ -4186,9 +4186,9 @@ namespace args
             {
             }
 
-            virtual ~PositionalList() {}
+            ~PositionalList() override {}
 
-            virtual void ParseValue(const std::string &value_) override
+            void ParseValue(const std::string &value_) override
             {
                 T v;
 #ifdef ARGS_NOEXCEPT
@@ -4203,7 +4203,7 @@ namespace args
                 matched = true;
             }
 
-            virtual std::string Name() const override
+            std::string Name() const override
             {
                 return name + std::string("...");
             }
@@ -4243,13 +4243,13 @@ namespace args
                 return &values;
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 PositionalBase::Reset();
                 values = defaultValues;
             }
 
-            virtual PositionalBase *GetNextPositional() override
+            PositionalBase *GetNextPositional() override
             {
                 const bool wasMatched = Matched();
                 auto me = PositionalBase::GetNextPositional();
@@ -4312,7 +4312,7 @@ namespace args
             Reader reader;
 
         protected:
-            virtual std::vector<std::string> GetChoicesStrings(const HelpParams &) const override
+            std::vector<std::string> GetChoicesStrings(const HelpParams &) const override
             {
                 return detail::MapKeysToStrings(map);
             }
@@ -4325,9 +4325,9 @@ namespace args
                 group_.Add(*this);
             }
 
-            virtual ~MapPositional() {}
+            ~MapPositional() override {}
 
-            virtual void ParseValue(const std::string &value_) override
+            void ParseValue(const std::string &value_) override
             {
                 K key;
 #ifdef ARGS_NOEXCEPT
@@ -4392,7 +4392,7 @@ namespace args
                 return &value;
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 PositionalBase::Reset();
                 value = defaultValue;
@@ -4424,7 +4424,7 @@ namespace args
             Reader reader;
 
         protected:
-            virtual std::vector<std::string> GetChoicesStrings(const HelpParams &) const override
+            std::vector<std::string> GetChoicesStrings(const HelpParams &) const override
             {
                 return detail::MapKeysToStrings(map);
             }
@@ -4449,9 +4449,9 @@ namespace args
                 group_.Add(*this);
             }
 
-            virtual ~MapPositionalList() {}
+            ~MapPositionalList() override {}
 
-            virtual void ParseValue(const std::string &value_) override
+            void ParseValue(const std::string &value_) override
             {
                 K key;
 #ifdef ARGS_NOEXCEPT
@@ -4515,18 +4515,18 @@ namespace args
                 return &values;
             }
 
-            virtual std::string Name() const override
+            std::string Name() const override
             {
                 return name + std::string("...");
             }
 
-            virtual void Reset() noexcept override
+            void Reset() noexcept override
             {
                 PositionalBase::Reset();
                 values = defaultValues;
             }
 
-            virtual PositionalBase *GetNextPositional() override
+            PositionalBase *GetNextPositional() override
             {
                 const bool wasMatched = Matched();
                 auto me = PositionalBase::GetNextPositional();

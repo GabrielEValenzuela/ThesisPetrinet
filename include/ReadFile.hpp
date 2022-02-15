@@ -14,7 +14,6 @@ class ReadFile{
     uint32_t number_places{0};
     uint32_t number_transitions{0};
     public:
-    virtual ~ReadFile(){};
     virtual uint32_t getNumberPlaces() = 0;
     virtual uint32_t getNumberTransitions() = 0;
     virtual int8_t readFile(std::string& file_name) = 0;

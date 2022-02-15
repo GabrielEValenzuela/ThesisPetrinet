@@ -3,7 +3,7 @@
 #include <iostream>
 #include "../lib/json.hpp"
 #include "../lib/PetriMatrix.hpp"
-#include "../lib/util.hpp"
+#include "../lib/entityPN.hpp"
 #include "ReadFile.hpp"
 
 

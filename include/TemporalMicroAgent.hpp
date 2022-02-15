@@ -10,6 +10,7 @@
 class TemporalMicroAgent : public Agent{
 public:
     void execute() override;
+    void executeWL() override;
     void resume() override;
     void suspend() override;
     void stop() override;

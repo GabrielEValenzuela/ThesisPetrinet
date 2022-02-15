@@ -2,17 +2,17 @@
 
 int8_t ReadXML::readFile(std::string &file_name) {
     pugi::xml_parse_result file_xml = pnml_file.load_file(file_name.c_str());
-    net_node = pnml_file.child("pnml").child("net");
-    if(!net_node){
+     if(!file_xml){
         return -1;
     }
-        for(auto transition_node = net_node.child("transition");transition_node;transition_node.next_sibling("transition")){
-            number_transitions++;
-        }
-        for(auto transition_node = net_node.child("place");transition_node;transition_node.next_sibling("place")){
-            number_places++;
-        }
-        return 1;
+    net_node = pnml_file.child("pnml").child("net");
+    for(auto transition_node = net_node.child("transition");transition_node;transition_node.next_sibling("transition")){
+        number_transitions++;
+    }
+    for(auto transition_node = net_node.child("place");transition_node;transition_node.next_sibling("place")){
+        number_places++;
+    }
+    return 1;
 }
 
 void ReadXML::readPlacesDiscrete(std::map<uint32_t, uint32_t>* map_discrete_places){

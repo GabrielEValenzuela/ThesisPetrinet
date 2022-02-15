@@ -16,6 +16,9 @@ void Engine::run(std::string &&filename, uint8_t operation)
     case 1:
         runAlgorithm();
         break;
+    case 2:
+        runSimulationLogger();
+        break;
     }
 }
 
@@ -73,36 +76,34 @@ void Engine::runSimulation()
     simulationFactory();
 
     the_monitor->setTotalAgents(pool_agent.size());
+    the_monitor->resetFireCount();
+    std::cout<<"Starting simulation...\n";
     auto start = std::chrono::high_resolution_clock::now();
     for (auto &agent : pool_agent)
     {
         agent->execute();
     }
-    uint64_t previous_count = 0;
-    uint8_t amount_stall = 0;
-    while (the_monitor->getFireCount() < max_fires && the_monitor->stillSensitized() && amount_stall < 5)
+    while (the_monitor->getFireCount() < max_fires)
     {
-        previous_count = the_monitor->getFireCount();
-        std::this_thread::sleep_for(std::chrono::seconds(4));
-        if (previous_count == the_monitor->getFireCount())
+        current_firecount = the_monitor->getFireCount();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (current_firecount == the_monitor->getFireCount() || !the_monitor->stillSensitized())
         {
-            amount_stall++;
+            std::cout<<"No agent available to fire... Simulation will stop, considerer improve the fire sequence";
+            std::cout<<" of the agents\n";
+            break;
         }
     }
     for (auto &agent : pool_agent)
     {
         agent->stop();
     }
-
+    fire_count_sim = the_monitor->getFireCount();
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> time = end - start;
-    auto logger = the_monitor->getFireLog();
-
-    OutputParser::MonitorOut(logger,time.count(),instance.get(),the_monitor->getFireCount());
+    simulation_time = time.count();
     std::cout << "***DONE***\t Simulation has end successfully.\n";
-    std::cout << "Take " << time.count() << " ms\n";
-    std::cout << "File output: monitor_out.json\n";
-    std::cout << "\n\n";
+    std::cout << "Take " << simulation_time << " ms\n";
 }
 
 void Engine::petriFactory(){
@@ -117,7 +118,7 @@ void Engine::petriFactory(){
             petri_director->buildPlaceTransitionNet(petri_type.get());
             instance = petri_type->getPetrinet();
             break;
-        };
+        }
         case Network_Choice::type::DISCRETE_TEMPORAL:
         {
             configureTimeScale();
@@ -128,7 +129,7 @@ void Engine::petriFactory(){
             instance = petri_type->getPetrinet();
             instance->setTimeLogic(the_timelogic);
             break;
-        };
+        }
         default:
             break;
         }
@@ -144,7 +145,7 @@ void Engine::petriFactory(){
             petri_director->buildPlaceTransitionNet(petri_type.get());
             instance = petri_type->getPetrinet();
             break;
-        };
+        }
         case Network_Choice::type::DISCRETE_TEMPORAL:
         {
             configureTimeScale();
@@ -155,29 +156,26 @@ void Engine::petriFactory(){
             instance = petri_type->getPetrinet();
             instance->setTimeLogic(the_timelogic);
             break;
-        };
+        }
         default:
             break;
         }
     }
 }
 
-void Engine::simulationFactory()
-{
-    petriFactory();
-    the_monitor = std::make_shared<Monitor>(instance);
-    factory = AgentFactory(the_monitor, instance);
-    the_monitor->resetFireCount();
-    pool_agent.clear();
+void Engine::loadConfiguration(){
     json config_json;
-    std::string config_file_name;
-    std::cout << "Please, enter a valid config file: ";
-    std::cin >> config_file_name;
-    std::ifstream file(config_file_name);
-    if (file.bad())
+    std::ifstream file;
+    std::cout << "Loading configuration file...\n";
+    file = std::ifstream(instance->getName()+"_config.json");
+    if (!file)
     {
-        std::cout << "Failed open config file. Exiting...\n";
+        std::cout << "Config file not found, please, provide a valid configuration file in JSON format\n";
+        std::cout << "This file should be "+instance->getName()+"_config.json\n";
         exit(0);
+    }
+    if(!pool_agent.empty()){
+        pool_agent.clear();
     }
     config_json = json::parse(file);
     if (!config_json["firesequence_agents"].is_null())
@@ -209,6 +207,15 @@ void Engine::simulationFactory()
     {
         max_fires = 100;
     }
+}
+
+void Engine::simulationFactory()
+{
+    petriFactory();
+    the_monitor = std::make_shared<Monitor>(instance);
+    factory = AgentFactory(the_monitor, instance);
+    the_monitor->resetFireCount();
+    loadConfiguration();
 }
 
 void Engine::configureTimeScale()
@@ -246,6 +253,9 @@ void Engine::configureTimeScale()
         the_timelogic = std::make_shared<HourTimeLogic>();
         break;
     }
+    default:{
+        return;
+    }
     }
 }
 
@@ -253,4 +263,45 @@ void Engine::runAlgorithm(){
     petriFactory();
     auto mincov = std::make_unique<AlgorithmMinCov>();
     mincov->runAlgorithm(instance);
+}
+
+void Engine::runSimulationLogger() {
+    runSimulation();
+    //simulationFactory();
+    the_monitor->resetFireCount();
+    std::cout<<"Starting simulation...\n";
+    loadConfiguration();
+    auto start = std::chrono::high_resolution_clock::now();
+    for (auto &agent : pool_agent)
+    {
+        agent->executeWL();
+    }
+    while (the_monitor->getFireCount() < fire_count_sim)
+    {
+        current_firecount = the_monitor->getFireCount();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (current_firecount == the_monitor->getFireCount() || !the_monitor->stillSensitized())
+        {
+            std::cout<<"No agent available to fire... Simulation will stop, considerer improve the fire sequence";
+            std::cout<<" of the agents\n";
+            break;
+        }
+    }
+    for (auto &agent : pool_agent)
+    {
+        agent->stop();
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> time = end - start;
+    logger_time = time.count();
+    std::cout << "***DONE***\t Simulation has end successfully.\n";
+    std::cout << "Take " << logger_time << " ms\n";
+    auto logger = the_monitor->getFireLog();
+    OutputParser::MonitorOut(logger,time.count(),instance.get(),the_monitor->getFireCount());
+    std::cout << "File output:"+instance->getName()+"_monitor.json\n";
+    std::cout << "Avg time per transition without logger: "<<simulation_time/fire_count_sim<<"\n";
+    std::cout << "Avg time per transition with logger: "<<logger_time/the_monitor->getFireCount()<<"\n";
+    std::cout << "Time diff: "<<std::abs(fire_count_sim-logger_time)<<"\n";
+    std::cout << "\n\n";
 }

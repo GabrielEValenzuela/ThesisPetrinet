@@ -102,32 +102,32 @@ This project implements the [**Generalized state equation for non-autonomous Pet
 {
 	"network": {
         "id": "name_PN",
-        "amount_places": N,
-        "amount_transitions": M,
+        "amount_places": "N",
+        "amount_transitions": "M",
         "time_scale": "none || unit",
-        "is_temporal": false || true,
+        "is_temporal": "false || true",
         "network_type": "discrete || continuos || colored"
     },
     "places":[
     {
-    	"index":N,
-	"type":Type,
-	"initial_marking":K
+    	"index": "N",
+	"type": "Type",
+	"initial_marking": "K"
     },...],
     "transitions":[
     {
-    	"index":M,
-	"type":Type,
-	"guard":true || false,
-	"event": true || false
+    	"index":"M",
+	"type":"Type",
+	"guard":"true || false",
+	"event": "true || false"
     },...],
     "arcs":[
     {
-    	"type":Type,
-	"from_place": true || false,
-	"source": i,
-	"target": j,
-	"weight": W
+    	"type":"Type",
+	"from_place": "true || false",
+	"source": "i",
+	"target": "j",
+	"weight": "W"
     },...]
 }
 

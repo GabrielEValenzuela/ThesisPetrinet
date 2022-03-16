@@ -30,3 +30,15 @@
 *.exe
 *.out
 *.app
+
+#Folder
+/tests/
+/cmake-build-release/
+/cmake-build-debug/
+/build/
+/.vscode/
+/out/
+/.idea
+/doc
+/.scannerwork
+/Demo

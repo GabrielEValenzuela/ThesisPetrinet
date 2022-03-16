@@ -12,6 +12,7 @@ void AgentImmediate::execute() {
                 idx_transition++;
             } else {
                 //Auto sleep thread
+                suspend_guard.store(true);
                 controller.acquire();
             }
         }

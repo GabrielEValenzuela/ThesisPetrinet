@@ -14,7 +14,6 @@
 #include "Queue.hpp"
 #include "Logger.hpp"
 #include "../lib/MathEngine.hpp"
-#include "../lib/date.h"
 #define PROFILING_ENABLE 0
 #ifdef PROFILING_ENABLE
 #include "../lib/tracy/Tracy.hpp"

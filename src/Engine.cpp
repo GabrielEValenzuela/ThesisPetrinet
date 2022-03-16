@@ -164,7 +164,6 @@ void Engine::petriFactory(){
 }
 
 void Engine::loadConfiguration(){
-    json config_json;
     std::ifstream file;
     std::cout << "Loading configuration file...\n";
     file = std::ifstream(instance->getName()+"_config.json");
@@ -175,9 +174,13 @@ void Engine::loadConfiguration(){
         exit(0);
     }
     if(!pool_agent.empty()){
+        for(auto &agent: pool_agent){
+            agent->stop();
+            agent.reset();
+        }
         pool_agent.clear();
     }
-    config_json = json::parse(file);
+    auto config_json = json::parse(file);
     if (!config_json["firesequence_agents"].is_null())
     {
         auto sequences = config_json["firesequence_agents"];
@@ -186,7 +189,8 @@ void Engine::loadConfiguration(){
             std::vector<uint32_t> fire = seq["sequence"];
             if (seq["type"].get<std::string>().compare("immediate") == 0)
             {
-                pool_agent.push_back(std::move(factory.getAgent(scale_time, Agent_Choice::type::Immediate, std::make_unique<std::vector<uint32_t>>(fire))));
+                auto a = std::move(factory.getAgent(scale_time, Agent_Choice::type::Immediate, std::make_unique<std::vector<uint32_t>>(fire)));
+                pool_agent.push_back(std::move(a));
             }
             else
             {
@@ -302,6 +306,6 @@ void Engine::runSimulationLogger() {
     std::cout << "File output:"+instance->getName()+"_monitor.json\n";
     std::cout << "Avg time per transition without logger: "<<simulation_time/fire_count_sim<<"\n";
     std::cout << "Avg time per transition with logger: "<<logger_time/the_monitor->getFireCount()<<"\n";
-    std::cout << "Time diff: "<<std::abs(fire_count_sim-logger_time)<<"\n";
+    std::cout << "Time diff: "<<std::abs(logger_time-simulation_time)<<"\n";
     std::cout << "\n\n";
 }

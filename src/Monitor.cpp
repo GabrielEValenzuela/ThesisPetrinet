@@ -28,8 +28,6 @@ bool Monitor::fireImmediate(Agent *agent, uint32_t transition) {
             #ifdef PROFILING_ENABLE
             TracyMessageL("Agent is enable to fire transition");
             #endif
-            logger::record r = {.transition=transition, .type="immediate", .action="fire", .timestamp=generateTimestamp(), .thread_id=agent->getStrId()};
-            logger.emplace_back(r);
             auto new_mark = std::make_unique<std::vector<uint32_t>>(petri_instance->getMark()->size());
             MathEngine::fire(petri_instance->getMark(), petri_instance->getRow(transition), new_mark.get());
             petri_instance->setMark(std::move(new_mark));
@@ -47,8 +45,6 @@ bool Monitor::fireImmediate(Agent *agent, uint32_t transition) {
             #ifdef PROFILING_ENABLE
             TracyMessageL("Agent is not enable to fire transition");
             #endif
-            logger::record r = {.transition=transition, .type="immediate", .action="sleep", .timestamp=generateTimestamp(), .thread_id=agent->getStrId()};
-            logger.emplace_back(r);
             checkAndUnlock();
             guard.unlock();
             immediate_queue->addAgent(transition, agent);
@@ -96,8 +92,6 @@ bool Monitor::fireTemporal(Agent *agent, uint32_t transition) {
                 #endif
                     //I'm inside window, I'm the first agent trying to fire the transition
                     // and I'm sensitized. I'll make the fire
-                    logger::record r = {.transition=transition, .type="temporal", .action="fire", .timestamp=generateTimestamp(), .thread_id=agent->getStrId()};
-                    logger.emplace_back(r);
                     auto new_mark = std::make_unique<std::vector<uint32_t>>(petri_instance->getMark()->size());
                     MathEngine::fire(petri_instance->getMark(), petri_instance->getRow(transition), new_mark.get());
                     petri_instance->setMark(std::move(new_mark));
@@ -116,8 +110,6 @@ bool Monitor::fireTemporal(Agent *agent, uint32_t transition) {
                     //So, I have two choices:
                     //If I'm early, i.e. before alpha time, I go to sleep the remaining time...
                     if (inside > 0) {
-                        logger::record r = {.transition=transition, .type="temporal", .action="sleep", .timestamp=generateTimestamp(), .thread_id=agent->getStrId()};
-                        logger.emplace_back(r);
                         agent->sleep_for(inside);
                         guard.unlock();
                         hodor->release();
@@ -129,8 +121,6 @@ bool Monitor::fireTemporal(Agent *agent, uint32_t transition) {
                 }
             }
         }
-        logger::record r = {.transition=transition, .type="temporal", .action="wait", .timestamp=std::move(generateTimestamp()), .thread_id=agent->getStrId()};
-        logger.emplace_back(r);
         checkAndUnlock();
         guard.unlock();
         hodor->release();
@@ -154,6 +144,8 @@ uint64_t Monitor::getFireCount() {
 
 void Monitor::resetFireCount() {
     fire_counter = 0;
+    immediate_queue->clearQueue();
+    temporal_queue->clearQueue();
 }
 
 bool Monitor::stillSensitized() {

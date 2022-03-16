@@ -2,7 +2,7 @@
 #include "../include/Engine.hpp"
 #include "../lib/args.hxx"
 
-#define VERSION_NUMBER "1.1.5"  ///< Version number of the application
+#define VERSION_NUMBER "1.1.9"  ///< Version number of the application
 
 
 int main(int argc, char **argv) {

@@ -30,5 +30,8 @@ public:
     std::size_t getSize() {
         return queues->size();
     }
+    void clearQueue(){
+        queues->clear();
+    }
     
 };
